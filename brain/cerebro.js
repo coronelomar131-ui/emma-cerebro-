@@ -14,9 +14,19 @@ export const EMOCIONES = ["neutral", "feliz", "triste", "enojado", "sorpresa", "
 
 export const MODELOS_POR_DEFECTO = {
   claude: "claude-opus-5",
-  gemini: "gemini-2.5-flash",
+  gemini: null,   // se elige solo, ver CANDIDATOS_GEMINI
   ollama: "llama3.2",
 };
+
+// Google va renombrando y jubilando modelos, y no todas las claves ven los
+// mismos. En vez de adivinar uno, probamos en orden y nos quedamos con el
+// primero que conteste. Si querés fijar uno, poné CARA_MODEL.
+const CANDIDATOS_GEMINI = [
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
+  "gemini-2.5-flash",
+  "gemini-flash-latest",
+];
 
 const SYSTEM = `Te llamás Emma. Sos la asistente de Omar.
 
@@ -114,6 +124,30 @@ async function conClaude({ turnos, texto, modelo }) {
 
 // ---------------- Gemini ----------------
 let gemini = null;
+let modeloElegido = null;   // el primero que funcionó, para no volver a probar
+
+function clienteGemini() {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("Falta la clave. Poné GEMINI_API_KEY (se saca en aistudio.google.com/apikey)");
+  }
+  return gemini;
+}
+
+/** Le pregunta a Google qué modelos ve esta clave, para poder avisar bien. */
+async function modelosDisponibles(ai) {
+  try {
+    const nombres = [];
+    const pagina = await ai.models.list();
+    for await (const m of pagina) {
+      if (m && m.name) nombres.push(String(m.name).replace(/^models\//, ""));
+      if (nombres.length >= 40) break;
+    }
+    return nombres.filter((n) => /flash|pro/.test(n));
+  } catch (err) {
+    return [];
+  }
+}
+
 async function conGemini({ turnos, texto, audio, modelo }) {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("Falta la clave. Poné GEMINI_API_KEY (se saca en aistudio.google.com/apikey)");
@@ -134,21 +168,39 @@ async function conGemini({ turnos, texto, audio, modelo }) {
     ? { role: "user", parts: [{ inlineData: { mimeType: audio.mimeType, data: audio.data } }] }
     : { role: "user", parts: [{ text: texto }] });
 
-  const response = await gemini.models.generateContent({
-    model: modelo,
-    contents,
-    config: {
-      systemInstruction: SYSTEM,
-      responseMimeType: "application/json",
-      responseSchema: ESQUEMA,
-      maxOutputTokens: 1024,
-    },
-  });
-  const uso = response.usageMetadata || {};
-  return normalizar(JSON.parse(response.text), {
-    entrada: uso.promptTokenCount,
-    salida: uso.candidatesTokenCount,
-  }, texto);
+  const config = {
+    systemInstruction: SYSTEM,
+    responseMimeType: "application/json",
+    responseSchema: ESQUEMA,
+    maxOutputTokens: 1024,
+  };
+
+  // Si nos fijaron un modelo, ese y nada más. Si no, probamos los candidatos.
+  const aProbar = modelo ? [modelo] : (modeloElegido ? [modeloElegido] : CANDIDATOS_GEMINI);
+  let ultimo = null;
+
+  for (const nombre of aProbar) {
+    try {
+      const response = await gemini.models.generateContent({ model: nombre, contents, config });
+      modeloElegido = nombre;
+      const uso = response.usageMetadata || {};
+      return normalizar(JSON.parse(response.text), {
+        modelo: nombre,
+        entrada: uso.promptTokenCount,
+        salida: uso.candidatesTokenCount,
+      }, texto);
+    } catch (err) {
+      // 404 = este modelo no existe para esta clave: seguimos con el próximo.
+      const esNoEncontrado = err && (err.status === 404 || /NOT_FOUND|not found|is not found/i.test(err.message || ""));
+      if (!esNoEncontrado) throw err;
+      ultimo = err;
+    }
+  }
+
+  const hay = await modelosDisponibles(gemini);
+  throw new Error(hay.length
+    ? `Ninguno de los modelos que probé existe para tu clave. Los que sí podés usar: ${hay.slice(0, 6).join(", ")}. Poné uno de esos en la variable CARA_MODEL.`
+    : `No pude encontrar un modelo que tu clave pueda usar. ${ultimo ? ultimo.message : ""}`);
 }
 
 // ---------------- Ollama ----------------
@@ -205,7 +257,7 @@ export async function pensar(pedido) {
     turnos: limpiarHistorial(pedido.history),
     texto: pedido.texto ? pedido.texto.trim() : "",
     audio: pedido.audio,
-    modelo: pedido.modelo || MODELOS_POR_DEFECTO[proveedor],
+    modelo: pedido.modelo || MODELOS_POR_DEFECTO[proveedor] || null,
     ollamaUrl: pedido.ollamaUrl || "http://localhost:11434",
   });
 }
@@ -229,7 +281,9 @@ export function explicarError(err, modelo) {
     return { code: 401, error: "La clave no es válida o no tiene permiso para este modelo." };
   }
   if (status === 404) {
-    return { code: 404, error: `El modelo "${modelo}" no existe o tu cuenta no tiene acceso.` };
+    return modelo
+      ? { code: 404, error: `El modelo "${modelo}" no existe o tu cuenta no tiene acceso.` }
+      : { code: 404, error: "El modelo pedido no existe o tu cuenta no tiene acceso." };
   }
   if (status === 429) {
     return { code: 429, error: "Llegaste al límite de consultas. Esperá un rato y probá de nuevo." };

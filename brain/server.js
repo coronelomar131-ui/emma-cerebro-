@@ -159,7 +159,7 @@ const CLAVES = { claude: "ANTHROPIC_API_KEY", gemini: "GEMINI_API_KEY" };
 
 server.listen(PORT, () => {
   console.log(`La cara está en http://localhost:${PORT}`);
-  console.log(`Cerebro: ${PROVEEDOR} (${MODELO})`);
+  console.log(`Cerebro: ${PROVEEDOR} (${MODELO || "modelo elegido automáticamente"})`);
   const clave = CLAVES[PROVEEDOR];
   if (clave && !process.env[clave]) {
     console.log(`Ojo: ${clave} no está seteada. Ponela en brain/.env`);

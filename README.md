@@ -32,12 +32,16 @@ depende del reconocimiento de voz del navegador, que en iOS es poco confiable.
 
 Listo. El link que te da es Emma.
 
+No hace falta elegir modelo: Google va renombrando y jubilando los suyos, así que
+Emma prueba los actuales en orden y se queda con el primero que su clave pueda usar.
+Si ninguno anda, te dice cuáles sí tenés disponibles.
+
 | Variable | Para qué |
 |---|---|
 | `GEMINI_API_KEY` | La clave de Gemini, del tier gratis |
 | `ANTHROPIC_API_KEY` | La clave de Claude, si preferís pagar por uso |
 | `CARA_PROVIDER` | `gemini` (por defecto) o `claude` |
-| `CARA_MODEL` | Para fijar otro modelo del mismo proveedor |
+| `CARA_MODEL` | Opcional. Para fijar un modelo. Si no la ponés, Emma elige sola |
 
 ## Correrla en tu computadora
 
