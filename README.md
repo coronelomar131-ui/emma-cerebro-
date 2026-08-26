@@ -43,6 +43,15 @@ Si ninguno anda, te dice cuáles sí tenés disponibles.
 | `CARA_PROVIDER` | `gemini` (por defecto) o `claude` |
 | `CARA_MODEL` | Opcional. Para fijar un modelo. Si no la ponés, Emma elige sola |
 
+## Saber qué versión está viva
+
+Si Emma se porta raro después de un cambio, abrí `/api/version` en tu link. Te dice
+qué commit está publicado y si la clave está puesta — sin mostrar la clave.
+
+Ojo con el botón **Redeploy** de Vercel: repite *el mismo commit*, no toma el código
+nuevo. Para publicar lo último, empujá un commit (el despliegue sale solo) o promoví
+a producción el despliegue que corresponde.
+
 ## Correrla en tu computadora
 
 ```bash
