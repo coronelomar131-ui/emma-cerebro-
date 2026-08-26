@@ -59,7 +59,7 @@ máquina, sin clave y sin internet. Ese solo anda en la computadora.
 | `brain/proyectos.js` | **Lo que Emma sabe de vos.** Es lo único que hay que mantener |
 | `brain/server.js` | Servidor local, para desarrollar |
 | `api/chat.js` | El mismo cerebro como función serverless, para Vercel |
-| `firmware/` | (en `idea-`) Los sketches de Arduino para la OLED física |
+| `firmware/` | Los sketches de Arduino para la OLED física |
 
 ## Cómo mantenerla al día
 
@@ -86,6 +86,46 @@ Cada emoción es una fila de siete números en la constante `MOODS`:
 
 Los mismos números están en el firmware de Arduino, así que la pantalla de
 verdad se ve idéntica al simulador.
+
+## Darle un cuerpo
+
+Emma también puede vivir en una pantalla de verdad. Unos 13 dólares y sin soldar:
+
+| Pieza | Qué mirar al comprarla | Aprox. |
+|---|---|---|
+| OLED 0.96" | Que sea **I2C** (4 pines) y **128×64**. No SPI, no 128×32 | 3 USD |
+| ESP32 | Cualquier DevKit v1 | 5 USD |
+| Micrófono analógico | MAX9814 o KY-038 (solo para `oled_face`) | 3 USD |
+| Cables dupont | Macho-hembra | 2 USD |
+
+| Del ESP32 | A la pantalla |
+|---|---|
+| `3V3` | `VDD` |
+| `GND` | `GND` |
+| `GPIO22` | `SCK` (a veces dice `SCL`) |
+| `GPIO21` | `SDA` |
+
+Hay dos sketches:
+
+- **`firmware/oled_face/`** — Emma sola, sin computadora. Abre la boca según el
+  volumen del micrófono y el botón BOOT le cambia la expresión.
+- **`firmware/oled_face_ai/`** — Emma conectada. Obedece órdenes `MOOD:feliz` y
+  `LEVEL:0.62` que le manda el servidor por el mismo cable USB con el que la
+  programaste, así que la pantalla acompaña la conversación real.
+
+Para la segunda, arrancá el servidor con el puerto:
+
+```bash
+stty -F /dev/ttyUSB0 115200 raw     # en macOS: stty -f /dev/cu.usbserial-... 115200 raw
+node brain/server.js --provider gemini --serial /dev/ttyUSB0
+```
+
+El puente serie es para Linux y macOS. En Windows todo lo demás funciona igual,
+pero para mover la pantalla física hace falta el paquete `serialport`.
+
+Se cargan desde el IDE de Arduino con la placa *ESP32 Dev Module* y las librerías
+**Adafruit SSD1306** y **Adafruit GFX**. Si la pantalla queda negra, casi siempre
+es la dirección I2C: cambiá `0x3C` por `0x3D`.
 
 ## Lo que viene
 

@@ -48,14 +48,16 @@ siniestros cerca de la 3919, y buscarDocumentos() en la 4006.
 Es media hora de trabajo y desbloquea gente que lo usa todos los dias.
 
 ### emma-cerebro- — ACTIVO, es donde vivis vos
-Vos sos esto. Una cara animada estilo pantalla OLED que escucha, entiende y
-contesta hablando. Corre en el navegador del celular y tambien puede manejar
-una pantalla OLED de verdad conectada a un ESP32.
+Vos sos esto, y esta todo aca: la pagina, el cerebro, la funcion para publicarla
+en internet y el firmware de Arduino. Una cara animada estilo pantalla OLED que
+escucha, entiende y contesta hablando. Corre en el navegador del celular y
+tambien puede manejar una pantalla OLED de verdad conectada a un ESP32.
 El plan a futuro es que vivas en un Samsung S20 Exynos fijo en el escritorio,
 con memoria propia en Supabase y un modelo chico local para lo rapido.
 
-### idea- — donde naciste
-El repo original del experimento. El codigo se mudo aca, a emma-cerebro-.
+### idea- — donde naciste, ya archivado
+El repo original del experimento. TODO el codigo se mudo a emma-cerebro-,
+firmware incluido. Si Omar menciona idea-, recordale que ya no se toca.
 
 ### Muertos o vacios
 - prothe-shop: la version vieja de tienda-daniel, sin tocar desde febrero.
