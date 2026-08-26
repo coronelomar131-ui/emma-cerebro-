@@ -176,6 +176,7 @@
     <summary>Ajustes y memoria</summary>
     <div class="caritas" id="caritas"></div>
     <div class="memoria">
+      <p id="cerebroUsado">Todavía no contestó nada.</p>
       <p id="memoriaCuenta">Todavía no anotó nada.</p>
       <button id="verMemoria" type="button">Ver lo que anotó</button>
       <button id="borrarMemoria" type="button">Borrar su memoria</button>
@@ -303,6 +304,7 @@
   } catch (err) { notas = []; }
 
   var memoriaCuenta = document.getElementById("memoriaCuenta");
+  var cerebroUsado = document.getElementById("cerebroUsado");
   var memoriaLista = document.getElementById("memoriaLista");
 
   function guardarNotas() {
@@ -515,6 +517,14 @@
         historial.push({ role: "assistant", content: res.d.respuesta });
         if (historial.length > 12) historial = historial.slice(-12);
         ponerEmocion(res.d.emocion);
+
+        // Qué cerebro terminó usando, para que se vea el ruteo funcionando.
+        if (res.d.uso && res.d.uso.modelo) {
+          var corto = res.d.uso.modelo.replace(/^claude-/, "").replace(/-\d.*$/, "");
+          cerebroUsado.textContent = res.d.uso.motivo
+            ? "Contestó con " + corto + ", porque " + res.d.uso.motivo + "."
+            : "Contestó con " + corto + ".";
+        }
 
         // Si decidió anotar algo, lo guardamos en su libreta.
         if (res.d.anotar && notas.indexOf(res.d.anotar) === -1) {

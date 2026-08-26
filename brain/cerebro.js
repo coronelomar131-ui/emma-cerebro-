@@ -220,6 +220,39 @@ function perfilDe(modelo) {
 // viene apagado: se prende poniendo CARA_PENSAR en "si".
 const PENSAR = /^(si|sí|1|true|yes)$/i.test(process.env.CARA_PENSAR || "");
 
+// ---------------- elegir el modelo según lo que le pidan ----------------
+// Preguntarle la hora y pedirle que te ayude a armar una idea no valen lo mismo.
+// El chico contesta lo de todos los días; el grande aparece cuando hay que pensar.
+const MODELO_CHICO = process.env.CARA_MODEL_CHICO || "claude-haiku-4-5";
+const MODELO_GRANDE = process.env.CARA_MODEL_GRANDE || "claude-sonnet-5";
+const RUTEO = !/^(no|0|false)$/i.test(process.env.CARA_RUTEO || "si");
+
+// Verbos y giros que casi siempre piden cabeza, no dato.
+const PIDE_CABEZA = new RegExp([
+  "ayud(a|ame|arme)", "pens(ar|á|a)\\b", "\\bidea", "dise(ñ|n)", "plane(ar|á)",
+  "arm(ar|á|ame)", "estructur", "explic", "por qu[eé]", "compar", "analiz",
+  "eval[uú]", "decid", "estrateg", "propon", "mejor(ar|á)", "resum", "revis",
+  "opin", "conviene", "deber[íi]a", "c[oó]mo hago", "qu[eé] hago", "vale la pena",
+  "pros y contras", "ventaja", "problema", "soluci[oó]n", "plan\\b", "proyecto",
+].join("|"), "i");
+
+/**
+ * Decide con qué modelo contestar. Sin llamadas extra: mira el mensaje y el hilo.
+ * @returns {{modelo: string, motivo: string}}
+ */
+export function elegirModelo(texto, turnos) {
+  const t = String(texto || "").trim();
+
+  if (PIDE_CABEZA.test(t)) return { modelo: MODELO_GRANDE, motivo: "te está por ayudar a pensar" };
+  // Un mensaje largo casi nunca es una pregunta de trámite.
+  if (t.length > 140) return { modelo: MODELO_GRANDE, motivo: "le contaste algo largo" };
+  // Y si la charla ya venía densa, no conviene bajar de nivel a mitad de camino.
+  const hilo = (turnos || []).slice(-4).reduce((n, m) => n + (m.content || "").length, 0);
+  if (hilo > 700) return { modelo: MODELO_GRANDE, motivo: "vienen hablando de algo denso" };
+
+  return { modelo: MODELO_CHICO, motivo: "es una pregunta de todos los días" };
+}
+
 async function conClaude({ turnos, texto, modelo, notas }) {
   if (!anthropic) {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
@@ -411,14 +444,30 @@ export async function pensar(pedido) {
   if (!pedido.audio && !(pedido.texto && pedido.texto.trim())) {
     throw new Error("Falta lo que querés decirle.");
   }
-  return cerebro({
+
+  const turnos = limpiarHistorial(pedido.history);
+
+  // Si nos fijaron un modelo, mandamos ese. Si no y el ruteo está prendido,
+  // Emma elige según lo que le están pidiendo.
+  let modelo = pedido.modelo || null;
+  let motivo = "";
+  if (!modelo && proveedor === "claude" && RUTEO) {
+    const elegido = elegirModelo(pedido.texto, turnos);
+    modelo = elegido.modelo;
+    motivo = elegido.motivo;
+  }
+
+  const salida = await cerebro({
     notas: pedido.notas,
-    turnos: limpiarHistorial(pedido.history),
+    turnos,
     texto: pedido.texto ? pedido.texto.trim() : "",
     audio: pedido.audio,
-    modelo: pedido.modelo || MODELOS_POR_DEFECTO[proveedor] || null,
+    modelo: modelo || MODELOS_POR_DEFECTO[proveedor] || null,
     ollamaUrl: pedido.ollamaUrl || "http://localhost:11434",
   });
+
+  if (motivo) salida.uso.motivo = motivo;
+  return salida;
 }
 
 /** Traduce el error del proveedor a algo que se pueda mostrar en pantalla. */

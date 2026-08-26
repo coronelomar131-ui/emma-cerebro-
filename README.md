@@ -54,6 +54,30 @@ Si ninguno anda, te dice cuáles sí tenés disponibles.
 | `CARA_MODEL` | Opcional. Para usar otro modelo. Con Gemini, si no la ponés, elige solo |
 | `CARA_PENSAR` | Opcional. En `si` hace que razone antes de contestar. Cuesta más |
 
+## Elige sola con qué cerebro contestar
+
+Preguntarle la hora y pedirle que te ayude a armar una idea no valen lo mismo,
+así que Emma mira lo que le pediste y elige:
+
+| Le preguntás | Contesta con |
+|---|---|
+| El clima, la hora, en qué quedaste | `claude-haiku-4-5` — rápido y barato |
+| Que te ayude a pensar, comparar, decidir, planear | `claude-sonnet-5` — el que razona |
+
+Lo decide sin llamadas extra: mira los verbos del mensaje, su largo, y si la charla
+ya venía densa. En **Ajustes y memoria** te dice cuál usó en la última respuesta y
+por qué, así lo podés ver funcionando.
+
+Con esto los créditos rinden alrededor del triple que usando siempre el grande,
+sin perder cabeza donde hace falta.
+
+| Variable | Para qué |
+|---|---|
+| `CARA_MODEL` | Fija un modelo para todo y apaga la elección automática |
+| `CARA_MODEL_CHICO` | Cambia el de todos los días |
+| `CARA_MODEL_GRANDE` | Cambia el de pensar |
+| `CARA_RUTEO` | En `no` apaga la elección automática |
+
 ## Su memoria
 
 Emma decide sola qué vale la pena recordar. Cuando aparece algo que le sirve
