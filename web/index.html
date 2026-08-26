@@ -250,7 +250,7 @@
     try {
       window.speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(texto);
-      u.lang = "es-AR";
+      u.lang = "es-MX";
       var voz = vozEspanola();
       if (voz) u.voice = voz;
       u.rate = emocion === "dormido" ? 0.85 : 1.05;
@@ -265,10 +265,22 @@
     }
   }
 
-  // ---------------- grabar y preguntar ----------------
+  // ---------------- escuchar ----------------
+  // Primero probamos el oído que ya trae el teléfono: es gratis y no gasta
+  // ninguna cuota. Si este navegador no puede (o falla), y el servidor sabe
+  // entender audio, mandamos la grabación. Y si no, siempre queda escribir.
   var historial = [];
   var ocupado = false;
   var grabadora = null, pedazos = [], tipoAudio = "", arranqueGrabacion = 0;
+  var Reconocimiento = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var escucha = null;          // el reconocimiento del teléfono, mientras corre
+  var puedeAudio = false;      // ¿el servidor entiende audio?
+  var usarAudio = false;       // pasamos a audio si el del teléfono falló
+
+  fetch("api/version")
+    .then(function (r) { return r.json(); })
+    .then(function (d) { puedeAudio = Boolean(d && d.oyeAudio); })
+    .catch(function () { /* si no contesta, seguimos con el oído del teléfono */ });
 
   function ocupar(si) {
     ocupado = si;
@@ -284,6 +296,61 @@
     return btoa(texto);
   }
 
+  function empezarAEscuchar() {
+    if (ocupado || escucha || grabadora) return;
+    destrabarVoz();
+    if (Reconocimiento && !usarAudio) return conElTelefono();
+    if (puedeAudio) return empezarAGrabar();
+    estado("Este navegador no puede escuchar. Escribime abajo.", true);
+  }
+
+  function terminarDeEscuchar() {
+    if (escucha) { try { escucha.stop(); } catch (err) { /* ya paró */ } return; }
+    terminarDeGrabar();
+  }
+
+  function conElTelefono() {
+    var r = new Reconocimiento();
+    var dicho = "";
+    r.lang = "es-MX";
+    r.interimResults = true;
+    r.continuous = false;
+
+    r.onstart = function () { micBtn.classList.add("grabando"); estado("Te escucho…"); };
+    r.onresult = function (e) {
+      dicho = "";
+      for (var i = 0; i < e.results.length; i++) dicho += e.results[i][0].transcript;
+      vosEl.textContent = dicho;
+    };
+    r.onerror = function (e) {
+      escucha = null;
+      micBtn.classList.remove("grabando");
+      if (e.error === "not-allowed") {
+        estado("Hace falta permiso de micrófono. También podés escribirme.", true);
+      } else if (puedeAudio) {
+        usarAudio = true;
+        estado("El oído del teléfono falló. Tocá de nuevo y uso el otro camino.");
+      } else {
+        estado("No te entendí. Probá de nuevo, o escribime abajo.", true);
+      }
+    };
+    r.onend = function () {
+      escucha = null;
+      micBtn.classList.remove("grabando");
+      if (dicho.trim()) preguntar({ text: dicho.trim() });
+      else if (!ocupado) estado("");
+    };
+
+    escucha = r;
+    try {
+      r.start();
+    } catch (err) {
+      escucha = null;
+      estado("No se pudo abrir el micrófono. Escribime abajo.", true);
+    }
+  }
+
+  // ---------------- respaldo: mandar la grabación ----------------
   function tipoGrabable() {
     if (!window.MediaRecorder) return null;
     var candidatos = ["audio/webm", "audio/mp4", "audio/ogg"];
@@ -294,8 +361,6 @@
   }
 
   async function empezarAGrabar() {
-    if (ocupado || grabadora) return;
-    destrabarVoz();
     var tipo = tipoGrabable();
     if (tipo === null) {
       estado("Este navegador no puede grabar. Escribime abajo.", true);
@@ -305,7 +370,7 @@
       var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       grabadora = new MediaRecorder(stream, tipo ? { mimeType: tipo } : undefined);
       pedazos = [];
-      // Gemini quiere el tipo pelado: "audio/webm", no "audio/webm;codecs=opus".
+      // El modelo quiere el tipo pelado: "audio/webm", no "audio/webm;codecs=opus".
       tipoAudio = (grabadora.mimeType || tipo || "audio/webm").split(";")[0];
       grabadora.ondataavailable = function (e) { if (e.data.size) pedazos.push(e.data); };
       grabadora.onstop = async function () {
@@ -336,10 +401,10 @@
     if (grabadora && grabadora.state === "recording") grabadora.stop();
   }
 
-  micBtn.addEventListener("pointerdown", function (e) { e.preventDefault(); empezarAGrabar(); });
-  micBtn.addEventListener("pointerup", function (e) { e.preventDefault(); terminarDeGrabar(); });
-  micBtn.addEventListener("pointercancel", terminarDeGrabar);
-  micBtn.addEventListener("pointerleave", terminarDeGrabar);
+  micBtn.addEventListener("pointerdown", function (e) { e.preventDefault(); empezarAEscuchar(); });
+  micBtn.addEventListener("pointerup", function (e) { e.preventDefault(); terminarDeEscuchar(); });
+  micBtn.addEventListener("pointercancel", terminarDeEscuchar);
+  micBtn.addEventListener("pointerleave", terminarDeEscuchar);
 
   function mandarTexto() {
     var texto = textoEl.value.trim();

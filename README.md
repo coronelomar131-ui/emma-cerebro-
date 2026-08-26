@@ -8,8 +8,12 @@ según lo que responde.
 Es un asistente personal, no una herramienta de trabajo. Lo que sabe de vos
 está en un solo archivo que vos controlás.
 
-Con Gemini también busca en internet cuando hace falta —clima, noticias, precios—
-y sabe qué día y qué hora es. Si le pasás un link, lo abre y lo lee.
+Busca en internet cuando hace falta —clima, noticias, precios— y sabe qué día y
+qué hora es.
+
+**Escuchar y hablar no cuestan nada.** El oído y la voz los pone el teléfono, con
+lo que ya trae adentro: no gastan cuota de ninguna API. Solo pensar la respuesta
+consume. Si el navegador no puede escuchar, siempre queda escribirle.
 
 ![Emma con tres expresiones](web/preview.png)
 
@@ -26,12 +30,15 @@ depende del reconocimiento de voz del navegador, que en iOS es poco confiable.
 ## Publicarla
 
 ```
-1. Sacá una clave gratis en aistudio.google.com/apikey
+1. Sacá una clave en console.anthropic.com
 2. Entrá a vercel.com con tu cuenta de GitHub
 3. Add New → Project → emma-cerebro- → Import
-4. Environment Variables → GEMINI_API_KEY = tu clave
+4. Environment Variables → ANTHROPIC_API_KEY = tu clave
 5. Deploy
 ```
+
+Si preferís el tier gratis de Google, la clave sale de aistudio.google.com/apikey,
+va en `GEMINI_API_KEY`, y además hay que poner `CARA_PROVIDER` en `gemini`.
 
 Listo. El link que te da es Emma.
 
@@ -41,10 +48,24 @@ Si ninguno anda, te dice cuáles sí tenés disponibles.
 
 | Variable | Para qué |
 |---|---|
-| `GEMINI_API_KEY` | La clave de Gemini, del tier gratis |
-| `ANTHROPIC_API_KEY` | La clave de Claude, si preferís pagar por uso |
-| `CARA_PROVIDER` | `gemini` (por defecto) o `claude` |
+| `ANTHROPIC_API_KEY` | La clave de Claude. Es la que usa por defecto |
+| `GEMINI_API_KEY` | Opcional. Solo si querés el tier gratis, o el oído de respaldo |
+| `CARA_PROVIDER` | `claude` (por defecto) o `gemini` |
 | `CARA_MODEL` | Opcional. Para fijar un modelo. Si no la ponés, Emma elige sola |
+
+## Quién escucha y quién piensa
+
+```
+tu voz  →  el teléfono la pasa a texto     GRATIS, no toca ninguna API
+              ↓
+        Claude piensa y busca              tus créditos
+              ↓
+        el teléfono lo dice en voz alta    GRATIS
+```
+
+El reconocimiento de voz del navegador anda muy bien en Android y algo peor en
+iPhone. Si falla y hay una clave de Gemini configurada, Emma manda la grabación
+como respaldo. Si no hay ninguna de las dos, te lo dice y podés escribirle.
 
 ## Por qué no pide un JSON exacto
 

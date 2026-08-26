@@ -16,9 +16,11 @@ export default function handler(req, res) {
     commit: (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7) || "desconocido",
     mensaje: process.env.VERCEL_GIT_COMMIT_MESSAGE || "",
     rama: process.env.VERCEL_GIT_COMMIT_REF || "",
-    proveedor: process.env.CARA_PROVIDER || "gemini",
+    proveedor: process.env.CARA_PROVIDER || "claude",
+    // Solo Gemini entiende audio. Si no, el oído lo pone el teléfono.
+    oyeAudio: (process.env.CARA_PROVIDER || "claude") === "gemini" && Boolean(process.env.GEMINI_API_KEY),
     modeloFijado: process.env.CARA_MODEL || "ninguno, se elige solo",
-    claveGemini: process.env.GEMINI_API_KEY ? "puesta" : "FALTA",
-    claveClaude: process.env.ANTHROPIC_API_KEY ? "puesta" : "no hace falta",
+    claveGemini: process.env.GEMINI_API_KEY ? "puesta" : "no hace falta",
+    claveClaude: process.env.ANTHROPIC_API_KEY ? "puesta" : "FALTA",
   });
 }

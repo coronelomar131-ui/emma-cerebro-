@@ -39,7 +39,7 @@ function arg(name, fallback) {
 }
 const PORT = Number(arg("port", 8000));
 const SERIAL_PORT = arg("serial", null);
-const PROVEEDOR = arg("provider", "gemini");
+const PROVEEDOR = arg("provider", "claude");
 const OLLAMA_URL = arg("ollama-url", "http://localhost:11434");
 const MODELO = arg("model", MODELOS_POR_DEFECTO[PROVEEDOR]);
 

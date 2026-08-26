@@ -10,7 +10,7 @@
 
 import { pensar, explicarError, MODELOS_POR_DEFECTO } from "../brain/cerebro.js";
 
-const PROVEEDOR = process.env.CARA_PROVIDER || "gemini";
+const PROVEEDOR = process.env.CARA_PROVIDER || "claude";
 const MODELO = process.env.CARA_MODEL || MODELOS_POR_DEFECTO[PROVEEDOR];
 
 export default async function handler(req, res) {

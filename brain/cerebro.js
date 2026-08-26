@@ -68,6 +68,14 @@ Si te pasa un link, podés abrirlo y leerlo.
 Esto es lo que sabés de él:
 ${PROYECTOS}`;
 
+// Se lo pedimos así a los dos modelos: es el formato que mejor respetan y el
+// único que convive con las herramientas de búsqueda.
+const FORMATO = `
+
+Contestá SIEMPRE con estas dos líneas y nada más:
+EMOCION: una de ${EMOCIONES.join(", ")}
+RESPUESTA: lo que le decís, en una o dos frases`;
+
 /** La fecha se calcula en cada consulta: si la dejáramos fija, envejecería. */
 function conFecha(base) {
   const ahora = new Date().toLocaleString("es-AR", {
@@ -144,28 +152,52 @@ function normalizar(data, uso, textoOriginal) {
 
 // ---------------- Claude ----------------
 let anthropic = null;
+
 async function conClaude({ turnos, texto, modelo }) {
   if (!anthropic) {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     anthropic = new Anthropic();
   }
-  const response = await anthropic.messages.create({
-    model: modelo,
-    // Las respuestas se dicen en voz alta: son de una o dos frases a propósito.
-    max_tokens: 1024,
-    system: conFecha(SYSTEM),
-    messages: [...turnos, { role: "user", content: texto }],
-    output_config: {
-      // Charla corta: con esfuerzo bajo contesta mucho más rápido.
-      effort: "low",
-      format: { type: "json_schema", schema: { ...ESQUEMA, additionalProperties: false } },
-    },
-  });
-  const bloque = response.content.find((b) => b.type === "text");
-  if (!bloque) throw new Error("La respuesta no trajo texto");
-  return normalizar(JSON.parse(bloque.text), {
-    entrada: response.usage.input_tokens,
-    salida: response.usage.output_tokens,
+
+  const pedido = {
+    model: modelo || MODELOS_POR_DEFECTO.claude,
+    // Las respuestas se dicen en voz alta, pero con buscador necesita aire.
+    max_tokens: 2048,
+    system: conFecha(SYSTEM) + FORMATO,
+    // Charla corta: con esfuerzo bajo contesta mucho más rápido.
+    output_config: { effort: "low" },
+    tools: [{ type: "web_search_20260209", name: "web_search" }],
+  };
+
+  let messages = [...turnos, { role: "user", content: texto }];
+  let response = null;
+  let entrada = 0, salida = 0;
+
+  // Con el buscador prendido, la API puede frenar a mitad de camino y avisar
+  // con stop_reason "pause_turn". Se reanuda devolviéndole lo que llevaba.
+  for (let vuelta = 0; vuelta < 4; vuelta++) {
+    response = await anthropic.messages.create({ ...pedido, messages });
+    entrada += response.usage.input_tokens || 0;
+    salida += response.usage.output_tokens || 0;
+    if (response.stop_reason !== "pause_turn") break;
+    messages = [...messages, { role: "assistant", content: response.content }];
+  }
+
+  if (response.stop_reason === "refusal") {
+    throw new Error("Claude prefirió no contestar eso. Probá preguntándolo de otra forma.");
+  }
+
+  // Con buscador la respuesta puede venir partida en varios bloques de texto.
+  const texto_salida = response.content
+    .filter((b) => b.type === "text")
+    .map((b) => b.text)
+    .join("\n")
+    .trim();
+
+  return normalizar(interpretar(texto_salida), {
+    modelo: pedido.model,
+    entrada,
+    salida,
   }, texto);
 }
 
@@ -219,11 +251,7 @@ async function conGemini({ turnos, texto, audio, modelo }) {
   // búsqueda vale más. Así que se lo pedimos con etiquetas en el prompt, que es
   // el formato que mejor respetan, y lo leemos con un parser tolerante.
   const config = {
-    systemInstruction: conFecha(SYSTEM) + `
-
-Contestá SIEMPRE con estas dos líneas y nada más:
-EMOCION: una de ${EMOCIONES.join(", ")}
-RESPUESTA: lo que le decís, en una o dos frases`,
+    systemInstruction: conFecha(SYSTEM) + FORMATO,
     tools: [{ googleSearch: {} }, { urlContext: {} }],
     maxOutputTokens: 2048,
   };
@@ -295,7 +323,7 @@ const CEREBROS = { claude: conClaude, gemini: conGemini, ollama: conOllama };
  *          proveedor?: string, modelo?: string, ollamaUrl?: string}} pedido
  */
 export async function pensar(pedido) {
-  const proveedor = pedido.proveedor || "gemini";
+  const proveedor = pedido.proveedor || "claude";
   const cerebro = CEREBROS[proveedor];
   if (!cerebro) {
     throw new Error(`No conozco el proveedor "${proveedor}". Usá claude, gemini u ollama.`);
