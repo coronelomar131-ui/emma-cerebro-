@@ -60,8 +60,23 @@ Si en vez de texto te llega un audio, primero entendés qué dijeron y lo copiá
 en el campo "dijiste"; si no se entiende nada, dejás "dijiste" vacío y lo decís en la
 respuesta.
 
+Podés buscar en internet cuando haga falta: noticias, clima, precios, datos que
+cambian. Usalo solo si de verdad hace falta, no para cualquier cosa. Si lo que
+decís salió de una búsqueda, mencionalo al pasar, sin dar una lista de fuentes.
+Si te pasa un link, podés abrirlo y leerlo.
+
 Esto es lo que sabés de él:
 ${PROYECTOS}`;
+
+/** La fecha se calcula en cada consulta: si la dejáramos fija, envejecería. */
+function conFecha(base) {
+  const ahora = new Date().toLocaleString("es-AR", {
+    timeZone: "America/Mexico_City",
+    dateStyle: "full",
+    timeStyle: "short",
+  });
+  return `${base}\n\nAhora mismo es: ${ahora} (hora de México).`;
+}
 
 const ESQUEMA = {
   type: "object",
@@ -80,6 +95,38 @@ function limpiarHistorial(history) {
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .map((m) => ({ role: m.role, content: m.content.slice(0, 2000) }))
     .slice(-12);
+}
+
+/**
+ * Cuando Emma puede buscar en internet, Google no deja exigirle un JSON exacto.
+ * Así que aceptamos las tres formas en que un modelo suele contestar, y si
+ * ninguna encaja nos quedamos con el texto tal cual.
+ */
+export function interpretar(texto) {
+  const limpio = String(texto || "").trim();
+  if (!limpio) throw new Error("El modelo no contestó nada");
+
+  // 1) JSON, con o sin los ``` que a veces le pone alrededor
+  const sinCerca = limpio.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+  if (sinCerca.startsWith("{")) {
+    try {
+      const d = JSON.parse(sinCerca);
+      if (d && typeof d.respuesta === "string") return d;
+    } catch (err) { /* seguimos probando */ }
+  }
+
+  // 2) el formato con etiquetas, que es el que mejor respetan
+  const emocion = limpio.match(/EMOCION\s*:\s*(\w+)/i);
+  const respuesta = limpio.match(/RESPUESTA\s*:\s*([\s\S]+)/i);
+  if (respuesta) {
+    return {
+      emocion: emocion ? emocion[1].toLowerCase() : "neutral",
+      respuesta: respuesta[1].trim(),
+    };
+  }
+
+  // 3) contestó en prosa y ya: lo tomamos como la respuesta
+  return { emocion: "neutral", respuesta: limpio };
 }
 
 /** Un modelo chico puede inventarse una emoción: nos quedamos con algo válido igual. */
@@ -106,7 +153,7 @@ async function conClaude({ turnos, texto, modelo }) {
     model: modelo,
     // Las respuestas se dicen en voz alta: son de una o dos frases a propósito.
     max_tokens: 1024,
-    system: SYSTEM,
+    system: conFecha(SYSTEM),
     messages: [...turnos, { role: "user", content: texto }],
     output_config: {
       // Charla corta: con esfuerzo bajo contesta mucho más rápido.
@@ -168,11 +215,17 @@ async function conGemini({ turnos, texto, audio, modelo }) {
     ? { role: "user", parts: [{ inlineData: { mimeType: audio.mimeType, data: audio.data } }] }
     : { role: "user", parts: [{ text: texto }] });
 
+  // Google no permite exigir un JSON exacto y buscar en internet a la vez, y la
+  // búsqueda vale más. Así que se lo pedimos con etiquetas en el prompt, que es
+  // el formato que mejor respetan, y lo leemos con un parser tolerante.
   const config = {
-    systemInstruction: SYSTEM,
-    responseMimeType: "application/json",
-    responseSchema: ESQUEMA,
-    maxOutputTokens: 1024,
+    systemInstruction: conFecha(SYSTEM) + `
+
+Contestá SIEMPRE con estas dos líneas y nada más:
+EMOCION: una de ${EMOCIONES.join(", ")}
+RESPUESTA: lo que le decís, en una o dos frases`,
+    tools: [{ googleSearch: {} }, { urlContext: {} }],
+    maxOutputTokens: 2048,
   };
 
   // Si nos fijaron un modelo, ese y nada más. Si no, probamos los candidatos.
@@ -184,7 +237,7 @@ async function conGemini({ turnos, texto, audio, modelo }) {
       const response = await gemini.models.generateContent({ model: nombre, contents, config });
       modeloElegido = nombre;
       const uso = response.usageMetadata || {};
-      return normalizar(JSON.parse(response.text), {
+      return normalizar(interpretar(response.text), {
         modelo: nombre,
         entrada: uso.promptTokenCount,
         salida: uso.candidatesTokenCount,
@@ -214,7 +267,7 @@ async function conOllama({ turnos, texto, modelo, ollamaUrl }) {
         model: modelo,
         stream: false,
         format: ESQUEMA,
-        messages: [{ role: "system", content: SYSTEM }, ...turnos, { role: "user", content: texto }],
+        messages: [{ role: "system", content: conFecha(SYSTEM) }, ...turnos, { role: "user", content: texto }],
       }),
     });
   } catch (err) {

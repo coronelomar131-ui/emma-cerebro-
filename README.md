@@ -8,6 +8,9 @@ según lo que responde.
 Es un asistente personal, no una herramienta de trabajo. Lo que sabe de vos
 está en un solo archivo que vos controlás.
 
+Con Gemini también busca en internet cuando hace falta —clima, noticias, precios—
+y sabe qué día y qué hora es. Si le pasás un link, lo abre y lo lee.
+
 ![Emma con tres expresiones](web/preview.png)
 
 ## Cómo se usa
@@ -42,6 +45,17 @@ Si ninguno anda, te dice cuáles sí tenés disponibles.
 | `ANTHROPIC_API_KEY` | La clave de Claude, si preferís pagar por uso |
 | `CARA_PROVIDER` | `gemini` (por defecto) o `claude` |
 | `CARA_MODEL` | Opcional. Para fijar un modelo. Si no la ponés, Emma elige sola |
+
+## Por qué no pide un JSON exacto
+
+Google no permite exigir una respuesta con formato JSON estricto **y** buscar en
+internet en la misma consulta: hay que elegir. Como la búsqueda vale más, Emma le
+pide el formato con etiquetas en el prompt (`EMOCION:` y `RESPUESTA:`), que es el
+que los modelos respetan mejor, y lo lee con un parser tolerante que acepta eso,
+JSON pelado, JSON entre comillas triples, o prosa suelta. Si nada encaja, usa el
+texto tal cual y pone cara neutral: nunca se rompe por el formato.
+
+Con Claude sí se usa el esquema estricto, porque ahí no hay ese conflicto.
 
 ## Saber qué versión está viva
 
