@@ -51,7 +51,25 @@ Si ninguno anda, te dice cuáles sí tenés disponibles.
 | `ANTHROPIC_API_KEY` | La clave de Claude. Es la que usa por defecto |
 | `GEMINI_API_KEY` | Opcional. Solo si querés el tier gratis, o el oído de respaldo |
 | `CARA_PROVIDER` | `claude` (por defecto) o `gemini` |
-| `CARA_MODEL` | Opcional. Para fijar un modelo. Si no la ponés, Emma elige sola |
+| `CARA_MODEL` | Opcional. Para usar otro modelo. Con Gemini, si no la ponés, elige solo |
+
+## Cuánto sale cada respuesta
+
+Una charla típica son unos 1.600 tokens de entrada (la personalidad, lo que sabe
+de vos y el hilo de la conversación) y 60 de salida. Con eso:
+
+| Modelo | Por respuesta | Con 5 dólares |
+|---|---|---|
+| `claude-haiku-4-5` (por defecto) | ~0,2 centavos | ~2.500 respuestas |
+| `claude-sonnet-5` | ~0,5 centavos | ~1.000 respuestas |
+| `claude-opus-5` | ~1,2 centavos | ~400 respuestas |
+
+Son estimaciones, no facturas: las búsquedas web se cobran aparte de los tokens,
+y un hilo largo de conversación pesa más que uno corto.
+
+Haiku alcanza de sobra para charlar de a una o dos frases. Si notás que se queda
+corta pensando, cambiás `CARA_MODEL` a `claude-sonnet-5` y listo — el código se
+adapta solo a lo que cada modelo acepta.
 
 ## Quién escucha y quién piensa
 

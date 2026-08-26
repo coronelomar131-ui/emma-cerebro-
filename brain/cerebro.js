@@ -13,7 +13,9 @@ import { PROYECTOS } from "./proyectos.js";
 export const EMOCIONES = ["neutral", "feliz", "triste", "enojado", "sorpresa", "dormido"];
 
 export const MODELOS_POR_DEFECTO = {
-  claude: "claude-opus-5",
+  // Haiku es el mas barato de la familia y le sobra para charlar de a una o dos
+  // frases. Si querés mas cabeza, poné CARA_MODEL con otro modelo.
+  claude: "claude-haiku-4-5",
   gemini: null,   // se elige solo, ver CANDIDATOS_GEMINI
   ollama: "llama3.2",
 };
@@ -153,21 +155,41 @@ function normalizar(data, uso, textoOriginal) {
 // ---------------- Claude ----------------
 let anthropic = null;
 
+// No todos los modelos aceptan lo mismo, y mandarle a uno viejo algo que no
+// entiende devuelve un error 400. Estos son los que necesitan trato especial.
+const PERFILES_VIEJOS = {
+  "claude-haiku-4-5": true,
+  "claude-haiku-4-5-20251001": true,
+  "claude-sonnet-4-5": true,
+};
+
+function perfilDe(modelo) {
+  return PERFILES_VIEJOS[modelo]
+    // Los modelos previos a la generación 4.6 no aceptan "effort" y usan la
+    // versión básica del buscador.
+    ? { aceptaEsfuerzo: false, buscador: "web_search_20250305" }
+    : { aceptaEsfuerzo: true, buscador: "web_search_20260209" };
+}
+
 async function conClaude({ turnos, texto, modelo }) {
   if (!anthropic) {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     anthropic = new Anthropic();
   }
 
+  const elegido = modelo || MODELOS_POR_DEFECTO.claude;
+  const perfil = perfilDe(elegido);
+
   const pedido = {
-    model: modelo || MODELOS_POR_DEFECTO.claude,
+    model: elegido,
     // Las respuestas se dicen en voz alta, pero con buscador necesita aire.
     max_tokens: 2048,
     system: conFecha(SYSTEM) + FORMATO,
-    // Charla corta: con esfuerzo bajo contesta mucho más rápido.
-    output_config: { effort: "low" },
-    tools: [{ type: "web_search_20260209", name: "web_search" }],
+    tools: [{ type: perfil.buscador, name: "web_search" }],
   };
+  // Charla corta: con esfuerzo bajo contesta más rápido y gasta menos. Los
+  // modelos viejos no lo aceptan y devuelven 400 si se lo mandamos igual.
+  if (perfil.aceptaEsfuerzo) pedido.output_config = { effort: "low" };
 
   let messages = [...turnos, { role: "user", content: texto }];
   let response = null;
@@ -195,7 +217,7 @@ async function conClaude({ turnos, texto, modelo }) {
     .trim();
 
   return normalizar(interpretar(texto_salida), {
-    modelo: pedido.model,
+    modelo: elegido,
     entrada,
     salida,
   }, texto);
