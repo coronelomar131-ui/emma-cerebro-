@@ -23,6 +23,17 @@ const MOODS = {
   dormido:  { browY:  2, browTilt: -3, eyeH:  3, lidTop: 0.00, lidBot: 0.00, mouthCurve:  1, mouthW: 16, openBias: 0.00 },
 };
 
+// Gestos: cosas de una sola vez que se montan encima de la emoción, como
+// hace una persona mientras habla. Duran poco y no cambian el humor.
+const GESTOS = {
+  guino:   1000,
+  asiente:  800,
+  niega:    800,
+  piensa:  1600,
+  cejas:    600,
+  risa:     900,
+};
+
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
@@ -52,6 +63,54 @@ class Face {
     this.nextLook = 1500;
 
     this.voice = 0;          // 0..1, nivel de voz suavizado
+
+    this.gesto = null;       // el gesto que está haciendo ahora
+    this.gestoT = 0;
+    this.proximoTic = 9000;  // cada tanto hace uno solo, para no quedar quieta
+  }
+
+  /** Arranca un gesto. Si ya había uno, lo reemplaza. */
+  setGesto(nombre) {
+    if (!GESTOS[nombre]) return;
+    this.gesto = nombre;
+    this.gestoT = 0;
+  }
+
+  /**
+   * Qué le hace el gesto a la cara en este instante.
+   * dx, dy mueven toda la cabeza; el resto retoca partes.
+   */
+  gestoAhora() {
+    const m = { dx: 0, dy: 0, guinoDer: 0, ceja: 0, mirarX: null, mirarY: null };
+    if (!this.gesto) return m;
+
+    const p = Math.min(1, this.gestoT / GESTOS[this.gesto]);
+    const sube = Math.sin(p * Math.PI);   // 0 -> 1 -> 0, para entrar y salir suave
+
+    switch (this.gesto) {
+      case "guino":
+        m.guinoDer = Math.sin(Math.min(1, p * 2.2) * Math.PI);
+        break;
+      case "asiente":
+        m.dy = Math.sin(p * Math.PI * 4) * 2.5 * sube;
+        break;
+      case "niega":
+        m.dx = Math.sin(p * Math.PI * 6) * 3 * sube;
+        break;
+      case "piensa":
+        m.mirarX = -3.5 * sube;
+        m.mirarY = -2.8 * sube;
+        m.ceja = -2 * sube;
+        break;
+      case "cejas":
+        m.ceja = -4 * sube;
+        break;
+      case "risa":
+        m.dy = -Math.abs(Math.sin(p * Math.PI * 3)) * 3;
+        m.ceja = -1.5 * sube;
+        break;
+    }
+    return m;
   }
 
   setMood(name) {
@@ -73,6 +132,21 @@ class Face {
     this.voice = target > this.voice
       ? lerp(this.voice, target, 1 - Math.pow(0.002, dt / 1000))
       : lerp(this.voice, target, 1 - Math.pow(0.15, dt / 1000));
+
+    // el gesto que esté haciendo
+    if (this.gesto) {
+      this.gestoT += dt;
+      if (this.gestoT >= GESTOS[this.gesto]) { this.gesto = null; this.gestoT = 0; }
+    }
+
+    // cada tanto hace uno solo, para que no parezca congelada
+    this.proximoTic -= dt;
+    if (this.proximoTic <= 0) {
+      if (!this.gesto && this.mood !== "dormido") {
+        this.setGesto(Math.random() < 0.6 ? "cejas" : "piensa");
+      }
+      this.proximoTic = 12000 + Math.random() * 18000;
+    }
 
     // parpadeo
     this.nextBlink -= dt;
@@ -111,13 +185,21 @@ class Face {
     c.lineJoin = 'round';
     c.lineCap = 'round';
 
-    const open = 1 - this.blink;
-    const h = Math.max(3, p.eyeH * open);
+    const g = this.gestoAhora();
+    const mirarX = g.mirarX === null ? this.look.x : g.mirarX;
+    const mirarY = g.mirarY === null ? this.look.y : g.mirarY;
+
+    // Mover la cabeza entera: asentir y negar salen de acá.
+    c.save();
+    c.translate(g.dx, g.dy);
 
     for (const isLeft of [true, false]) {
+      // Un ojo puede cerrarse solo: eso es el guiño.
+      const open = 1 - Math.min(1, this.blink + (isLeft ? 0 : g.guinoDer));
+      const h = Math.max(3, p.eyeH * open);
       const cx = isLeft ? EYE_CX_L : EYE_CX_R;
-      const x = cx - EYE_W / 2 + this.look.x;
-      const y = EYE_CY - h / 2 + this.look.y * 0.6;
+      const x = cx - EYE_W / 2 + mirarX;
+      const y = EYE_CY - h / 2 + mirarY * 0.6;
 
       // ojo: rectangulo redondeado con contorno grueso
       c.strokeStyle = '#fff';
@@ -129,7 +211,7 @@ class Face {
       if (open > 0.55 && h > 12) {
         c.fillStyle = '#fff';
         c.beginPath();
-        c.arc(cx + this.look.x * 1.7, EYE_CY + this.look.y * 1.3 + 1, 2.6, 0, Math.PI * 2);
+        c.arc(cx + mirarX * 1.7, EYE_CY + mirarY * 1.3 + 1, 2.6, 0, Math.PI * 2);
         c.fill();
       }
 
@@ -157,15 +239,15 @@ class Face {
       }
 
       // ceja
-      const by = EYE_CY - p.eyeH / 2 - 8 + p.browY + this.look.y * 0.3;
+      const by = EYE_CY - p.eyeH / 2 - 8 + p.browY + mirarY * 0.3 + g.ceja;
       const t = p.browTilt * 0.6;
       const xIn = isLeft ? cx + 15 : cx - 15;
       const xOut = isLeft ? cx - 15 : cx + 15;
       c.strokeStyle = '#fff';
       c.lineWidth = 3;
       c.beginPath();
-      c.moveTo(xOut + this.look.x * 0.5, by - t);
-      c.lineTo(xIn + this.look.x * 0.5, by + t);
+      c.moveTo(xOut + mirarX * 0.5, by - t);
+      c.lineTo(xIn + mirarX * 0.5, by + t);
       c.stroke();
     }
 
@@ -187,8 +269,10 @@ class Face {
       c.quadraticCurveTo(64, MOUTH_Y + cv * 0.9, 64 + mw / 2, MOUTH_Y - cv * 0.35);
       c.stroke();
     }
+
+    c.restore();
   }
 }
 
 // Se expone como global para poder abrir index.html directo desde el disco
-if (typeof window !== 'undefined') { window.OledFace = { W, H, MOODS, Face }; }
+if (typeof window !== 'undefined') { window.OledFace = { W, H, MOODS, GESTOS, Face }; }

@@ -133,7 +133,25 @@ tu voz  →  el teléfono la pasa a texto     GRATIS, no toca ninguna API
 
 El reconocimiento de voz del navegador anda muy bien en Android y algo peor en
 iPhone. Si falla y hay una clave de Gemini configurada, Emma manda la grabación
-como respaldo. Si no hay ninguna de las dos, te lo dice y podés escribirle.
+y **Gemini le presta el oído**: la transcribe, y el texto sigue camino a Claude,
+que es quien piensa. Si no hay ninguna de las dos, te lo dice y podés escribirle.
+
+## Sus gestos
+
+Además de la emoción con la que se queda, Emma hace gestos de un segundo
+mientras habla, como una persona:
+
+| Gesto | Cuándo |
+|---|---|
+| `asiente` | Te da la razón |
+| `niega` | Te dice que no |
+| `guino` | Te carga, o comparten un chiste |
+| `cejas` | Algo le llamó la atención |
+| `risa` | Le causó gracia |
+| `piensa` | Duda, o va a decir algo con cuidado |
+
+Los elige ella, y no en todas las respuestas. Además hace `piensa` sola mientras
+espera la respuesta, y cada tanto un gesto suelto para no quedar congelada.
 
 ## Por qué no pide un JSON exacto
 

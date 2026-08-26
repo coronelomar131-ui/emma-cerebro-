@@ -12,6 +12,9 @@ import { PROYECTOS } from "./proyectos.js";
 
 export const EMOCIONES = ["neutral", "feliz", "triste", "enojado", "sorpresa", "dormido"];
 
+// Gestos de una sola vez, como los que hace alguien mientras habla.
+export const GESTOS = ["guino", "asiente", "niega", "piensa", "cejas", "risa"];
+
 export const MODELOS_POR_DEFECTO = {
   // Haiku es el mas barato de la familia y le sobra para charlar de a una o dos
   // frases. Si querés mas cabeza, poné CARA_MODEL con otro modelo.
@@ -76,8 +79,17 @@ const FORMATO = `
 
 Contestá SIEMPRE con este formato y nada más:
 EMOCION: una de ${EMOCIONES.join(", ")}
+GESTO: (opcional) una de ${GESTOS.join(", ")}
 RESPUESTA: lo que le decís, en una o dos frases
 ANOTAR: (opcional) algo que quieras recordar para siempre
+
+La emoción es la cara con la que te quedás. El GESTO es algo de un segundo que
+hacés mientras lo decís, como una persona: "asiente" cuando le das la razón,
+"niega" cuando le decís que no, "guino" cuando lo cargás o compartís un chiste
+interno, "cejas" cuando algo te llama la atención, "risa" cuando te causa gracia,
+"piensa" cuando dudás o estás por decir algo con cuidado.
+
+No pongas gesto en todas las respuestas. Ponelo cuando de verdad lo harías.
 
 La línea ANOTAR es tu memoria. Poné una sola cuando aparezca algo que te sirva
 saber más adelante: cómo se llama alguien de su entorno, qué le gusta o le
@@ -156,12 +168,14 @@ export function interpretar(texto) {
 
   // 2) el formato con etiquetas, que es el que mejor respetan
   const emocion = limpio.match(/EMOCION\s*:\s*(\w+)/i);
+  const gesto = limpio.match(/GESTO\s*:\s*(\w+)/i);
   const anotar = limpio.match(/ANOTAR\s*:\s*(.+)/i);
-  // La respuesta llega hasta donde empieza ANOTAR, si es que vino.
-  const respuesta = limpio.match(/RESPUESTA\s*:\s*([\s\S]+?)(?=\n\s*ANOTAR\s*:|$)/i);
+  // La respuesta llega hasta donde empiece la línea siguiente, si es que vino.
+  const respuesta = limpio.match(/RESPUESTA\s*:\s*([\s\S]+?)(?=\n\s*(?:ANOTAR|GESTO|EMOCION)\s*:|$)/i);
   if (respuesta) {
     return {
       emocion: emocion ? emocion[1].toLowerCase() : "neutral",
+      gesto: gesto ? gesto[1].toLowerCase() : "",
       respuesta: respuesta[1].trim(),
       anotar: anotar ? anotar[1].trim() : "",
     };
@@ -177,8 +191,10 @@ function normalizar(data, uso, textoOriginal) {
     throw new Error("El modelo no devolvió una respuesta usable");
   }
   const nota = typeof data.anotar === "string" ? data.anotar.trim() : "";
+  const gesto = typeof data.gesto === "string" ? data.gesto.trim().toLowerCase() : "";
   return {
     emocion: EMOCIONES.includes(data.emocion) ? data.emocion : "neutral",
+    gesto: GESTOS.includes(gesto) ? gesto : "",
     respuesta: data.respuesta.trim(),
     // Una nota vacía, muy corta o larguísima no sirve de memoria.
     anotar: nota.length > 3 && nota.length < 300 ? nota : "",
@@ -337,7 +353,8 @@ async function modelosDisponibles(ai) {
   }
 }
 
-async function conGemini({ turnos, texto, audio, modelo, notas }) {
+/** Prueba los modelos en orden hasta que uno conteste, y recuerda cuál fue. */
+async function pedirAGemini({ contents, config, modelo }) {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("Falta la clave. Poné GEMINI_API_KEY (se saca en aistudio.google.com/apikey)");
   }
@@ -345,6 +362,50 @@ async function conGemini({ turnos, texto, audio, modelo, notas }) {
     const { GoogleGenAI } = await import("@google/genai");
     gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   }
+
+  const aProbar = modelo ? [modelo] : (modeloElegido ? [modeloElegido] : CANDIDATOS_GEMINI);
+  let ultimo = null;
+
+  for (const nombre of aProbar) {
+    try {
+      const response = await gemini.models.generateContent({ model: nombre, contents, config });
+      modeloElegido = nombre;
+      return { response, nombre };
+    } catch (err) {
+      // 404 = este modelo no existe para esta clave: seguimos con el próximo.
+      const esNoEncontrado = err && (err.status === 404 || /NOT_FOUND|not found|is not found/i.test(err.message || ""));
+      if (!esNoEncontrado) throw err;
+      ultimo = err;
+    }
+  }
+
+  const hay = await modelosDisponibles(gemini);
+  throw new Error(hay.length
+    ? `Ninguno de los modelos que probé existe para tu clave. Los que sí podés usar: ${hay.slice(0, 6).join(", ")}. Poné uno de esos en la variable CARA_MODEL.`
+    : `No pude encontrar un modelo que tu clave pueda usar. ${ultimo ? ultimo.message : ""}`);
+}
+
+/**
+ * El oído prestado. Claude no entiende audio, así que cuando llega una
+ * grabación y el cerebro es otro, Gemini la pasa a texto y seguimos.
+ */
+export async function transcribir(audio) {
+  const { response } = await pedirAGemini({
+    contents: [{
+      role: "user",
+      parts: [
+        { inlineData: { mimeType: audio.mimeType, data: audio.data } },
+        { text: "Transcribí exactamente lo que se dice en este audio, en español. Devolvé solo la transcripción, sin comillas ni comentarios. Si no se entiende nada, devolvé una línea vacía." },
+      ],
+    }],
+    config: { maxOutputTokens: 512 },
+  });
+  const dicho = String(response.text || "").trim();
+  if (!dicho) throw new Error("No se entendió el audio. Probá de nuevo o escribime.");
+  return dicho;
+}
+
+async function conGemini({ turnos, texto, audio, modelo, notas }) {
 
   // Gemini llama "model" a lo que las otras APIs llaman "assistant".
   const contents = turnos.map((m) => ({
@@ -366,32 +427,13 @@ async function conGemini({ turnos, texto, audio, modelo, notas }) {
     maxOutputTokens: 2048,
   };
 
-  // Si nos fijaron un modelo, ese y nada más. Si no, probamos los candidatos.
-  const aProbar = modelo ? [modelo] : (modeloElegido ? [modeloElegido] : CANDIDATOS_GEMINI);
-  let ultimo = null;
-
-  for (const nombre of aProbar) {
-    try {
-      const response = await gemini.models.generateContent({ model: nombre, contents, config });
-      modeloElegido = nombre;
-      const uso = response.usageMetadata || {};
-      return normalizar(interpretar(response.text), {
-        modelo: nombre,
-        entrada: uso.promptTokenCount,
-        salida: uso.candidatesTokenCount,
-      }, texto);
-    } catch (err) {
-      // 404 = este modelo no existe para esta clave: seguimos con el próximo.
-      const esNoEncontrado = err && (err.status === 404 || /NOT_FOUND|not found|is not found/i.test(err.message || ""));
-      if (!esNoEncontrado) throw err;
-      ultimo = err;
-    }
-  }
-
-  const hay = await modelosDisponibles(gemini);
-  throw new Error(hay.length
-    ? `Ninguno de los modelos que probé existe para tu clave. Los que sí podés usar: ${hay.slice(0, 6).join(", ")}. Poné uno de esos en la variable CARA_MODEL.`
-    : `No pude encontrar un modelo que tu clave pueda usar. ${ultimo ? ultimo.message : ""}`);
+  const { response, nombre } = await pedirAGemini({ contents, config, modelo });
+  const uso = response.usageMetadata || {};
+  return normalizar(interpretar(response.text), {
+    modelo: nombre,
+    entrada: uso.promptTokenCount,
+    salida: uso.candidatesTokenCount,
+  }, texto);
 }
 
 // ---------------- Ollama ----------------
@@ -438,10 +480,18 @@ export async function pensar(pedido) {
   if (!cerebro) {
     throw new Error(`No conozco el proveedor "${proveedor}". Usá claude, gemini u ollama.`);
   }
-  if (pedido.audio && proveedor !== "gemini") {
-    throw new Error("Por ahora solo Gemini entiende audio. Escribí lo que querés decir, o usá --provider gemini.");
+  // Claude y Ollama no entienden audio. Si hay clave de Gemini, le prestamos
+  // el oído: transcribe y seguimos con el texto.
+  let audio = pedido.audio;
+  let textoPedido = pedido.texto;
+  if (audio && proveedor !== "gemini") {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("Este cerebro no entiende audio. Escribime, o poné una clave de Gemini para que te escuche.");
+    }
+    textoPedido = await transcribir(audio);
+    audio = null;
   }
-  if (!pedido.audio && !(pedido.texto && pedido.texto.trim())) {
+  if (!audio && !(textoPedido && textoPedido.trim())) {
     throw new Error("Falta lo que querés decirle.");
   }
 
@@ -452,7 +502,7 @@ export async function pensar(pedido) {
   let modelo = pedido.modelo || null;
   let motivo = "";
   if (!modelo && proveedor === "claude" && RUTEO) {
-    const elegido = elegirModelo(pedido.texto, turnos);
+    const elegido = elegirModelo(textoPedido, turnos);
     modelo = elegido.modelo;
     motivo = elegido.motivo;
   }
@@ -460,8 +510,8 @@ export async function pensar(pedido) {
   const salida = await cerebro({
     notas: pedido.notas,
     turnos,
-    texto: pedido.texto ? pedido.texto.trim() : "",
-    audio: pedido.audio,
+    texto: textoPedido ? textoPedido.trim() : "",
+    audio,
     modelo: modelo || MODELOS_POR_DEFECTO[proveedor] || null,
     ollamaUrl: pedido.ollamaUrl || "http://localhost:11434",
   });

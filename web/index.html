@@ -491,6 +491,7 @@
   function preguntar(cuerpo) {
     ocupar(true);
     estado("Pensando…");
+    face.setGesto("piensa");
     if (cuerpo.text) vosEl.textContent = cuerpo.text;
     else vosEl.textContent = "…";
     ponerEmocion("neutral");
@@ -517,6 +518,7 @@
         historial.push({ role: "assistant", content: res.d.respuesta });
         if (historial.length > 12) historial = historial.slice(-12);
         ponerEmocion(res.d.emocion);
+        if (res.d.gesto) face.setGesto(res.d.gesto);
 
         // Qué cerebro terminó usando, para que se vea el ruteo funcionando.
         if (res.d.uso && res.d.uso.modelo) {
