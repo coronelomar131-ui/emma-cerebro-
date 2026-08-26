@@ -5,8 +5,8 @@ dos ojos, dos cejas y una boca — escucha por el micrófono del teléfono,
 entiende lo que le decís y contesta en voz alta, cambiando de expresión
 según lo que responde.
 
-Conoce los proyectos de Omar: si le preguntás en qué quedaste con alguno,
-te lo dice.
+Es un asistente personal, no una herramienta de trabajo. Lo que sabe de vos
+está en un solo archivo que vos controlás.
 
 ![Emma con tres expresiones](web/preview.png)
 
