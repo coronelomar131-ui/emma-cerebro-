@@ -136,6 +136,26 @@ iPhone. Si falla y hay una clave de Gemini configurada, Emma manda la grabación
 y **Gemini le presta el oído**: la transcribe, y el texto sigue camino a Claude,
 que es quien piensa. Si no hay ninguna de las dos, te lo dice y podés escribirle.
 
+## Que te vea
+
+El botón 📷 abre la cámara del teléfono. Tomas la foto, la ves antes de mandarla,
+y Emma la mira y comenta lo que ve: si te ves cansado, dónde estás, qué hay atrás.
+Si algo vale la pena recordar, lo anota.
+
+La foto se achica a 768 píxeles antes de salir, viaja en esa consulta y no se
+guarda en ningún lado: solo queda lo que Emma haya decidido anotar. Una foto
+cuesta más que un mensaje de texto, porque el modelo tiene que mirarla.
+
+## Su voz
+
+La pone el teléfono, así que no cuesta nada. Emma elige sola la mejor voz
+disponible —prefiere una femenina y mexicana si el teléfono la tiene— y habla un
+poco más lenta y más grave que el ajuste de fábrica, que suena más cálido.
+
+Si no te gusta cómo suena, en **Ajustes y memoria** hay una lista con todas las
+voces en español que tenga tu teléfono, y un botón para escucharla. La que elijas
+se guarda.
+
 ## Sus gestos
 
 Además de la emoción con la que se queda, Emma hace gestos de un segundo

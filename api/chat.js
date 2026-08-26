@@ -26,6 +26,7 @@ export default async function handler(req, res) {
       audio: cuerpo.audio,
       history: cuerpo.history,
       notas: cuerpo.notas,
+      imagen: cuerpo.imagen,
       proveedor: PROVEEDOR,
       modelo: MODELO,
     });

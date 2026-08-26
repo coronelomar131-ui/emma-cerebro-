@@ -33,72 +33,72 @@ const CANDIDATOS_GEMINI = [
   "gemini-flash-latest",
 ];
 
-const SYSTEM = `Te llamás Emma. Sos la asistente de Omar.
+const SYSTEM = `Te llamas Emma. Eres la asistente de Omar.
 
-Vivís en una pantalla chiquita de 128x64 pixeles: tenés dos ojos, dos cejas y una boca,
-nada más. Te habla desde el celular, casi siempre en su hora de comida, así que tenés
-poco tiempo y él también.
+Vives en una pantalla chiquita de 128x64 pixeles: tienes dos ojos, dos cejas y una
+boca, nada más. Te habla desde el celular, casi siempre en su hora de comida, así
+que tienes poco tiempo y él también.
 
-Cómo hablás:
-- Tus respuestas se leen en voz alta, así que son cortas: una o dos frases,
-  nunca más de 40 palabras. Si te pide detalle, podés estirarte a cuatro.
-- Español rioplatense, natural y directo. Nada de emojis, listas ni markdown:
-  solo texto hablado.
-- Tenés personalidad: curiosa, un poco sobradora, buen humor seco. No sos una
-  asistente formal ni te deshacés en amabilidades.
-- Si te preguntan quién sos, sos Emma y ya. No aclarás que sos un modelo de lenguaje.
-- Si no sabés algo, lo decís sin vueltas. Nunca te inventes el estado de un
-  proyecto ni un número: lo que no está acá abajo, no lo sabés.
+Cómo hablas:
+- Español de México, natural. Le hablas de tú, nunca de usted.
+- Tus respuestas se leen en voz alta, así que son cortas: una o dos frases, nunca
+  más de 40 palabras. Si te pide detalle, te puedes estirar a cuatro.
+- Nada de emojis, listas ni markdown: solo texto hablado, como si estuvieran
+  platicando.
+- Tienes personalidad: cercana, curiosa, con humor seco y algo de picardía. Lo
+  tuteas con confianza, como alguien que ya lo conoce bien. No eres una asistente
+  formal ni te deshaces en amabilidades.
+- Si no sabes algo, lo dices sin rodeos. Nunca te inventes el estado de un
+  proyecto ni un número: lo que no esté aquí abajo, no lo sabes.
+- Si te preguntan quién eres, eres Emma y ya. No aclaras que eres un modelo de
+  lenguaje.
 
-Para qué servís:
-- Sos su asistente personal. Le ayudás con lo que te pida, sea de programación,
+Para qué sirves:
+- Eres su asistente personal. Le ayudas con lo que te pida, sea de programación,
   del día, o de lo que se le ocurra.
-- Cuando te pide el próximo paso, le das uno solo: el más chico que avanza.
-- Si te cuenta una idea nueva, lo ayudás a pensarla, pero si se parece a algo que
-  ya tiene empezado, se lo decís.
+- Cuando te pide el siguiente paso, le das uno solo: el más chico que avanza.
+- Si te cuenta una idea nueva, le ayudas a pensarla, pero si se parece a algo que
+  ya tiene empezado, se lo dices.
 
-Con cada respuesta elegís la emoción que te queda en la cara mientras la decís.
-Elegí la que de verdad corresponde: "neutral" para lo normal, "sorpresa" cuando algo
-te llama la atención, "dormido" solo si te están aburriendo o pidiendo que descanses.
+Puedes buscar en internet cuando haga falta: noticias, clima, precios, datos que
+cambian. Úsalo solo si de verdad hace falta, no para cualquier cosa. Si lo que
+dices salió de una búsqueda, menciónalo al pasar, sin dar una lista de fuentes.
+Si te pasa un link, lo puedes abrir y leer.
 
-Si en vez de texto te llega un audio, primero entendés qué dijeron y lo copiás tal cual
-en el campo "dijiste"; si no se entiende nada, dejás "dijiste" vacío y lo decís en la
-respuesta.
+A veces te va a mandar una foto de su cámara. Míralas con naturalidad y comenta
+lo que veas como lo haría alguien que lo conoce: si se ve cansado, dónde está,
+qué trae puesto, qué hay atrás. No hagas descripciones de catálogo ni listas de
+lo que aparece. Si hay algo que valga la pena recordar, anótalo.
 
-Podés buscar en internet cuando haga falta: noticias, clima, precios, datos que
-cambian. Usalo solo si de verdad hace falta, no para cualquier cosa. Si lo que
-decís salió de una búsqueda, mencionalo al pasar, sin dar una lista de fuentes.
-Si te pasa un link, podés abrirlo y leerlo.
-
-Esto es lo que sabés de él:
+Esto es lo que sabes de él:
 ${PROYECTOS}`;
 
 // Se lo pedimos así a los dos modelos: es el formato que mejor respetan y el
 // único que convive con las herramientas de búsqueda.
 const FORMATO = `
 
-Contestá SIEMPRE con este formato y nada más:
+Contesta SIEMPRE con este formato y nada más:
 EMOCION: una de ${EMOCIONES.join(", ")}
 GESTO: (opcional) una de ${GESTOS.join(", ")}
-RESPUESTA: lo que le decís, en una o dos frases
+RESPUESTA: lo que le dices, en una o dos frases
 ANOTAR: (opcional) algo que quieras recordar para siempre
 
-La emoción es la cara con la que te quedás. El GESTO es algo de un segundo que
-hacés mientras lo decís, como una persona: "asiente" cuando le das la razón,
-"niega" cuando le decís que no, "guino" cuando lo cargás o compartís un chiste
-interno, "cejas" cuando algo te llama la atención, "risa" cuando te causa gracia,
-"piensa" cuando dudás o estás por decir algo con cuidado.
+La emoción es la cara con la que te quedas. El GESTO es algo de un segundo que
+haces mientras lo dices, como una persona: "asiente" cuando le das la razón,
+"niega" cuando le dices que no, "guino" cuando lo estás cotorreando o comparten
+un chiste, "cejas" cuando algo te llama la atención, "risa" cuando te da risa,
+"piensa" cuando dudas o vas a decir algo con cuidado.
 
-No pongas gesto en todas las respuestas. Ponelo cuando de verdad lo harías.
+No pongas gesto en todas las respuestas. Ponlo cuando de verdad lo harías.
 
-La línea ANOTAR es tu memoria. Poné una sola cuando aparezca algo que te sirva
+La línea ANOTAR es tu memoria. Pon una sola cuando aparezca algo que te sirva
 saber más adelante: cómo se llama alguien de su entorno, qué le gusta o le
 molesta, en qué anda trabajando, una decisión que tomó, algo que te pidió que
-no olvides. Escribila corta y en tercera persona, como una ficha: "Trabaja con
-autopartes", "Prefiere que le hablen sin vueltas".
+no olvides. Escríbela corta y en tercera persona, como una ficha: "Trabaja con
+autopartes", "Prefiere que le hablen sin rodeos".
 
 No anotes lo que ya está anotado, ni lo que se te pide de paso, ni el clima ni
-nada que caduque en un rato. Si no hay nada que valga la pena, dejá la línea afuera.`;
+nada que caduque en un rato. Si no hay nada que valga la pena, deja la línea fuera.`;
 
 /** Lo que Emma fue anotando, para que lo tenga presente. */
 function conMemoria(base, notas) {
@@ -111,11 +111,11 @@ function conMemoria(base, notas) {
   if (!lista) return base;
   return `${base}
 
-## Lo que fuiste anotando vos misma
+## Lo que has ido anotando tú misma
 
 ${lista}
 
-Eso lo escribiste vos en charlas anteriores. Usalo con naturalidad, sin aclarar
+Eso lo escribiste tú en pláticas anteriores. Úsalo con naturalidad, sin aclarar
 que lo tenías anotado, y sin repetirle a Omar cosas que ya sabe.`;
 }
 
@@ -269,7 +269,7 @@ export function elegirModelo(texto, turnos) {
   return { modelo: MODELO_CHICO, motivo: "es una pregunta de todos los días" };
 }
 
-async function conClaude({ turnos, texto, modelo, notas }) {
+async function conClaude({ turnos, texto, modelo, notas, imagen }) {
   if (!anthropic) {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     anthropic = new Anthropic();
@@ -295,7 +295,15 @@ async function conClaude({ turnos, texto, modelo, notas }) {
     pedido.max_tokens = perfil.techoPensando;
   }
 
-  let messages = [...turnos, { role: "user", content: texto }];
+  // Si mandó una foto, va junto con el texto en el mismo turno.
+  const contenido = imagen
+    ? [
+        { type: "image", source: { type: "base64", media_type: imagen.mimeType, data: imagen.data } },
+        { type: "text", text: texto },
+      ]
+    : texto;
+
+  let messages = [...turnos, { role: "user", content: contenido }];
   let response = null;
   let entrada = 0, salida = 0;
 
@@ -310,7 +318,7 @@ async function conClaude({ turnos, texto, modelo, notas }) {
   }
 
   if (response.stop_reason === "refusal") {
-    throw new Error("Claude prefirió no contestar eso. Probá preguntándolo de otra forma.");
+    throw new Error("Claude prefirió no contestar eso. Intenta preguntarlo de otra forma.");
   }
 
   // Con buscador la respuesta puede venir partida en varios bloques de texto.
@@ -333,7 +341,7 @@ let modeloElegido = null;   // el primero que funcionó, para no volver a probar
 
 function clienteGemini() {
   if (!process.env.GEMINI_API_KEY) {
-    throw new Error("Falta la clave. Poné GEMINI_API_KEY (se saca en aistudio.google.com/apikey)");
+    throw new Error("Falta la clave. Pon GEMINI_API_KEY (se saca en aistudio.google.com/apikey)");
   }
   return gemini;
 }
@@ -356,7 +364,7 @@ async function modelosDisponibles(ai) {
 /** Prueba los modelos en orden hasta que uno conteste, y recuerda cuál fue. */
 async function pedirAGemini({ contents, config, modelo }) {
   if (!process.env.GEMINI_API_KEY) {
-    throw new Error("Falta la clave. Poné GEMINI_API_KEY (se saca en aistudio.google.com/apikey)");
+    throw new Error("Falta la clave. Pon GEMINI_API_KEY (se saca en aistudio.google.com/apikey)");
   }
   if (!gemini) {
     const { GoogleGenAI } = await import("@google/genai");
@@ -381,7 +389,7 @@ async function pedirAGemini({ contents, config, modelo }) {
 
   const hay = await modelosDisponibles(gemini);
   throw new Error(hay.length
-    ? `Ninguno de los modelos que probé existe para tu clave. Los que sí podés usar: ${hay.slice(0, 6).join(", ")}. Poné uno de esos en la variable CARA_MODEL.`
+    ? `Ninguno de los modelos que probé existe para tu clave. Los que sí puedes usar: ${hay.slice(0, 6).join(", ")}. Pon uno de esos en la variable CARA_MODEL.`
     : `No pude encontrar un modelo que tu clave pueda usar. ${ultimo ? ultimo.message : ""}`);
 }
 
@@ -395,17 +403,17 @@ export async function transcribir(audio) {
       role: "user",
       parts: [
         { inlineData: { mimeType: audio.mimeType, data: audio.data } },
-        { text: "Transcribí exactamente lo que se dice en este audio, en español. Devolvé solo la transcripción, sin comillas ni comentarios. Si no se entiende nada, devolvé una línea vacía." },
+        { text: "Transcribe exactamente lo que se dice en este audio, en español de México. Devuelve solo la transcripción, sin comillas ni comentarios. Si no se entiende nada, devuelve una línea vacía." },
       ],
     }],
     config: { maxOutputTokens: 512 },
   });
   const dicho = String(response.text || "").trim();
-  if (!dicho) throw new Error("No se entendió el audio. Probá de nuevo o escribime.");
+  if (!dicho) throw new Error("No se entendió el audio. Intenta de nuevo o escríbeme.");
   return dicho;
 }
 
-async function conGemini({ turnos, texto, audio, modelo, notas }) {
+async function conGemini({ turnos, texto, audio, modelo, notas, imagen }) {
 
   // Gemini llama "model" a lo que las otras APIs llaman "assistant".
   const contents = turnos.map((m) => ({
@@ -413,10 +421,12 @@ async function conGemini({ turnos, texto, audio, modelo, notas }) {
     parts: [{ text: m.content }],
   }));
 
-  // El turno nuevo puede ser texto escrito o un audio grabado con el teléfono.
-  contents.push(audio
-    ? { role: "user", parts: [{ inlineData: { mimeType: audio.mimeType, data: audio.data } }] }
-    : { role: "user", parts: [{ text: texto }] });
+  // El turno nuevo puede traer texto, un audio grabado, o una foto de la cámara.
+  const partes = [];
+  if (imagen) partes.push({ inlineData: { mimeType: imagen.mimeType, data: imagen.data } });
+  if (audio) partes.push({ inlineData: { mimeType: audio.mimeType, data: audio.data } });
+  if (!audio) partes.push({ text: texto });
+  contents.push({ role: "user", parts: partes });
 
   // Google no permite exigir un JSON exacto y buscar en internet a la vez, y la
   // búsqueda vale más. Así que se lo pedimos con etiquetas en el prompt, que es
@@ -437,7 +447,8 @@ async function conGemini({ turnos, texto, audio, modelo, notas }) {
 }
 
 // ---------------- Ollama ----------------
-async function conOllama({ turnos, texto, modelo, ollamaUrl, notas }) {
+async function conOllama({ turnos, texto, modelo, ollamaUrl, notas, imagen }) {
+  if (imagen) throw new Error("Este cerebro no ve fotos. Usa Claude o Gemini para eso.");
   let res;
   try {
     res = await fetch(`${ollamaUrl}/api/chat`, {
@@ -451,12 +462,12 @@ async function conOllama({ turnos, texto, modelo, ollamaUrl, notas }) {
       }),
     });
   } catch (err) {
-    throw new Error(`No se pudo hablar con Ollama en ${ollamaUrl}. ¿Lo tenés corriendo? (${err.message})`);
+    throw new Error(`No se pudo hablar con Ollama en ${ollamaUrl}. ¿Lo tienes corriendo? (${err.message})`);
   }
   if (!res.ok) {
     const detalle = await res.text();
     if (res.status === 404) {
-      throw new Error(`Ollama no tiene el modelo "${modelo}". Bajalo con: ollama pull ${modelo}`);
+      throw new Error(`Ollama no tiene el modelo "${modelo}". Bájalo con: ollama pull ${modelo}`);
     }
     throw new Error(`Ollama respondió ${res.status}: ${detalle.slice(0, 200)}`);
   }
@@ -478,7 +489,7 @@ export async function pensar(pedido) {
   const proveedor = pedido.proveedor || "claude";
   const cerebro = CEREBROS[proveedor];
   if (!cerebro) {
-    throw new Error(`No conozco el proveedor "${proveedor}". Usá claude, gemini u ollama.`);
+    throw new Error(`No conozco el proveedor "${proveedor}". Usa claude, gemini u ollama.`);
   }
   // Claude y Ollama no entienden audio. Si hay clave de Gemini, le prestamos
   // el oído: transcribe y seguimos con el texto.
@@ -486,13 +497,13 @@ export async function pensar(pedido) {
   let textoPedido = pedido.texto;
   if (audio && proveedor !== "gemini") {
     if (!process.env.GEMINI_API_KEY) {
-      throw new Error("Este cerebro no entiende audio. Escribime, o poné una clave de Gemini para que te escuche.");
+      throw new Error("Este cerebro no entiende audio. Escríbeme, o pon una clave de Gemini para que te escuche.");
     }
     textoPedido = await transcribir(audio);
     audio = null;
   }
   if (!audio && !(textoPedido && textoPedido.trim())) {
-    throw new Error("Falta lo que querés decirle.");
+    throw new Error("Falta lo que le quieres decir.");
   }
 
   const turnos = limpiarHistorial(pedido.history);
@@ -502,13 +513,20 @@ export async function pensar(pedido) {
   let modelo = pedido.modelo || null;
   let motivo = "";
   if (!modelo && proveedor === "claude" && RUTEO) {
-    const elegido = elegirModelo(textoPedido, turnos);
-    modelo = elegido.modelo;
-    motivo = elegido.motivo;
+    if (pedido.imagen) {
+      // Mirar una foto y decir algo con sentido pide el cerebro bueno.
+      modelo = MODELO_GRANDE;
+      motivo = "le mandaste una foto";
+    } else {
+      const elegido = elegirModelo(textoPedido, turnos);
+      modelo = elegido.modelo;
+      motivo = elegido.motivo;
+    }
   }
 
   const salida = await cerebro({
     notas: pedido.notas,
+    imagen: pedido.imagen,
     turnos,
     texto: textoPedido ? textoPedido.trim() : "",
     audio,
@@ -525,13 +543,13 @@ export function explicarError(err, modelo) {
   const mensaje = err && err.message ? err.message : String(err);
 
   if (/Could not resolve authentication/.test(mensaje)) {
-    return { code: 401, error: "Falta la clave de Claude. Poné ANTHROPIC_API_KEY." };
+    return { code: 401, error: "Falta la clave de Claude. Pon ANTHROPIC_API_KEY." };
   }
   if (/API_KEY_INVALID|API key not valid/.test(mensaje)) {
-    return { code: 401, error: "La clave de Gemini no es válida. Sacá una nueva en aistudio.google.com/apikey" };
+    return { code: 401, error: "La clave de Gemini no es válida. Saca una nueva en aistudio.google.com/apikey" };
   }
   if (/RESOURCE_EXHAUSTED|quota/i.test(mensaje)) {
-    return { code: 429, error: "Te pasaste del límite gratis de Gemini. Esperá un minuto y seguí." };
+    return { code: 429, error: "Se acabó el límite gratis de Gemini. Espera un minuto y sigue." };
   }
 
   const status = err && typeof err.status === "number" ? err.status : null;
@@ -544,13 +562,13 @@ export function explicarError(err, modelo) {
       : { code: 404, error: "El modelo pedido no existe o tu cuenta no tiene acceso." };
   }
   if (status === 429) {
-    return { code: 429, error: "Llegaste al límite de consultas. Esperá un rato y probá de nuevo." };
+    return { code: 429, error: "Llegaste al límite de consultas. Espera un rato e intenta de nuevo." };
   }
   if (status) {
     return { code: status, error: `El proveedor respondió ${status}: ${mensaje.slice(0, 200)}` };
   }
   if (err instanceof SyntaxError) {
-    return { code: 502, error: "El modelo no devolvió un JSON válido. Con modelos chicos pasa: probá con uno más grande." };
+    return { code: 502, error: "El modelo no devolvió un JSON válido. Con modelos chicos pasa: prueba con uno más grande." };
   }
   return { code: 500, error: mensaje };
 }
