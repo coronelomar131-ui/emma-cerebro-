@@ -1,0 +1,14 @@
+{
+  "name": "emma-cerebro",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Emma: una asistente con cara de pantalla OLED que escucha, entiende y contesta hablando",
+  "scripts": {
+    "start": "node brain/server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
+    "@google/genai": "^1.0.0"
+  }
+}

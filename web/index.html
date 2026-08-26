@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#07090d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Emma">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Emma</title>
+<style>
+  :root {
+    --fg: #3fe9ff;
+    --bg: #07090d;
+    --panel: #131722;
+    --line: #262d3b;
+    --text: #e7ecf3;
+    --muted: #8d97a8;
+    --rec: #ff5f6d;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  /* ---------- la cara ---------- */
+  .escenario {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px 14px 0;
+  }
+  .modulo {
+    background: linear-gradient(#1b4f96, #12386e);
+    padding: 12px 11px 11px;
+    border-radius: 9px;
+    box-shadow: 0 14px 34px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.2);
+    width: 100%;
+    max-width: 520px;
+  }
+  .pines {
+    display: flex; gap: 9px; justify-content: flex-end;
+    font: 10px/1 ui-monospace, "SF Mono", Menlo, monospace;
+    color: #cfe0f5; letter-spacing: .14em; margin-bottom: 8px;
+  }
+  .vidrio { background: #000; border-radius: 3px; padding: 5px; }
+  canvas {
+    display: block; width: 100%; height: auto;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 5px rgba(63,233,255,.5));
+  }
+
+  /* ---------- lo que se dijo ---------- */
+  .dicho {
+    flex: 1 1 auto;
+    padding: 16px 18px 4px;
+    text-align: center;
+    min-height: 4.6em;
+    display: flex; flex-direction: column; gap: 6px; justify-content: center;
+    overflow-y: auto;
+  }
+  .dicho .vos { color: var(--muted); font-size: 14px; }
+  .dicho .ella { font-size: 17px; line-height: 1.35; text-wrap: balance; }
+
+  /* ---------- barra de abajo ---------- */
+  .barra {
+    flex: 0 0 auto;
+    display: flex; gap: 9px; align-items: center;
+    padding: 8px 14px 14px;
+  }
+  .mic {
+    flex: none;
+    width: 58px; height: 58px; border-radius: 50%;
+    border: 1px solid #1f5f6d; background: #0d2b33; color: var(--fg);
+    font-size: 24px; line-height: 1; cursor: pointer;
+    display: grid; place-items: center;
+    touch-action: none; user-select: none;
+    transition: transform .12s, background .12s, border-color .12s;
+  }
+  .mic.grabando { background: #3a121a; border-color: var(--rec); color: var(--rec); transform: scale(1.08); }
+  .mic:disabled { opacity: .35; }
+
+  input[type=text] {
+    flex: 1 1 auto; min-width: 0;
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 14px 18px; font: inherit; font-size: 16px;
+  }
+  input[type=text]::placeholder { color: var(--muted); }
+  input[type=text]:focus { outline: none; border-color: var(--fg); }
+
+  .enviar {
+    flex: none;
+    width: 48px; height: 48px; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--panel); color: var(--text);
+    font-size: 19px; cursor: pointer;
+  }
+  .enviar:disabled { opacity: .35; }
+
+  .estado {
+    flex: 0 0 auto;
+    margin: 0; padding: 0 18px 10px;
+    text-align: center; font-size: 13px; color: var(--muted);
+    min-height: 1.5em;
+  }
+  .estado.mal { color: #ff9aa5; }
+
+  /* ---------- ajustes ---------- */
+  details { flex: 0 0 auto; padding: 0 14px 14px; }
+  summary { color: var(--muted); font-size: 13px; text-align: center; cursor: pointer; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  .caritas { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; padding-top: 12px; }
+  .caritas button {
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 8px 14px; font: inherit; font-size: 14px; cursor: pointer;
+  }
+  .caritas button[aria-pressed="true"] { background: #0d2b33; border-color: var(--fg); color: var(--fg); }
+
+  @media (min-height: 720px) {
+    .dicho .ella { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="escenario">
+    <div class="modulo">
+      <div class="pines"><span>VDD</span><span>GND</span><span>SCK</span><span>SDA</span></div>
+      <div class="vidrio"><canvas id="screen" width="512" height="256" role="img" aria-label="Emma, una cara animada en una pantalla OLED"></canvas></div>
+    </div>
+  </div>
+
+  <div class="dicho">
+    <p class="vos" id="vos"></p>
+    <p class="ella" id="ella">Soy Emma. Mantené apretado el micrófono y hablame.</p>
+  </div>
+
+  <div class="barra">
+    <button class="mic" id="mic" aria-label="Mantené apretado para hablar">🎙️</button>
+    <input type="text" id="texto" placeholder="o escribime acá…" autocomplete="off" enterkeyhint="send">
+    <button class="enviar" id="enviar" aria-label="Enviar">↑</button>
+  </div>
+
+  <p class="estado" id="estado"></p>
+
+  <details>
+    <summary>Cambiarle la cara a mano</summary>
+    <div class="caritas" id="caritas"></div>
+  </details>
+
+<script src="face.js"></script>
+<script>
+(function () {
+  "use strict";
+  var MOODS = window.OledFace.MOODS, W = window.OledFace.W, H = window.OledFace.H;
+
+  var view = document.getElementById("screen");
+  var v = view.getContext("2d");
+  var SCALE = view.width / W;
+  var off = document.createElement("canvas");
+  off.width = W; off.height = H;
+  var o = off.getContext("2d", { willReadFrequently: true });
+
+  var face = new window.OledFace.Face();
+  var estadoEl = document.getElementById("estado");
+  var vosEl = document.getElementById("vos");
+  var ellaEl = document.getElementById("ella");
+  var micBtn = document.getElementById("mic");
+  var textoEl = document.getElementById("texto");
+  var enviarBtn = document.getElementById("enviar");
+
+  function estado(txt, mal) {
+    estadoEl.textContent = txt || "";
+    estadoEl.classList.toggle("mal", Boolean(mal));
+  }
+
+  // ---------------- emociones a mano ----------------
+  var LABELS = { neutral: "Neutral", feliz: "Feliz", triste: "Triste", enojado: "Enojado", sorpresa: "Sorpresa", dormido: "Dormido" };
+  var botones = {};
+  var caritas = document.getElementById("caritas");
+  Object.keys(MOODS).forEach(function (name) {
+    var b = document.createElement("button");
+    b.textContent = LABELS[name];
+    b.setAttribute("aria-pressed", String(name === "neutral"));
+    b.addEventListener("click", function () { ponerEmocion(name); });
+    botones[name] = b;
+    caritas.appendChild(b);
+  });
+
+  function ponerEmocion(name) {
+    face.setMood(name);
+    for (var m in botones) botones[m].setAttribute("aria-pressed", String(m === name));
+    avisarALaPantalla(name, null);
+  }
+
+  // ---------------- puente con la OLED de verdad ----------------
+  // Solo existe cuando la página la sirve tu propia computadora. En internet
+  // no hay puerto serie, así que después del primer fallo dejamos de insistir.
+  var puenteVivo = true;
+  var ultimoAviso = 0;
+  function avisarALaPantalla(emocion, level) {
+    if (!puenteVivo) return;
+    var ahora = Date.now();
+    if (level !== null && ahora - ultimoAviso < 66) return;
+    ultimoAviso = ahora;
+    fetch("api/face", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emocion: emocion, level: level }),
+    })
+      .then(function (r) { if (!r.ok) puenteVivo = false; })
+      .catch(function () { puenteVivo = false; });
+  }
+
+  // ---------------- voz de salida ----------------
+  // iOS solo deja hablar si la primera vez arranca dentro de un toque del dedo,
+  // así que al primer toque soltamos una frase muda para destrabarlo.
+  var vozLista = false, hablando = false, tHabla = 0, golpe = 0;
+
+  function destrabarVoz() {
+    if (vozLista || !window.speechSynthesis) return;
+    try {
+      var u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0;
+      window.speechSynthesis.speak(u);
+      vozLista = true;
+    } catch (err) { /* si no se puede, se lee en pantalla igual */ }
+  }
+
+  function vozEspanola() {
+    var voces = window.speechSynthesis.getVoices() || [];
+    for (var i = 0; i < voces.length; i++) if (/^es/i.test(voces[i].lang)) return voces[i];
+    return null;
+  }
+
+  function decir(texto, emocion) {
+    if (!window.speechSynthesis) return;
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(texto);
+      u.lang = "es-AR";
+      var voz = vozEspanola();
+      if (voz) u.voice = voz;
+      u.rate = emocion === "dormido" ? 0.85 : 1.05;
+      u.pitch = emocion === "sorpresa" ? 1.3 : emocion === "triste" ? 0.85 : 1;
+      u.onstart = function () { hablando = true; tHabla = 0; };
+      u.onboundary = function () { golpe = 1; };
+      u.onend = function () { hablando = false; golpe = 0; estado(""); };
+      u.onerror = function () { hablando = false; };
+      window.speechSynthesis.speak(u);
+    } catch (err) {
+      estado("La respuesta quedó escrita: este navegador no la puede decir.", false);
+    }
+  }
+
+  // ---------------- grabar y preguntar ----------------
+  var historial = [];
+  var ocupado = false;
+  var grabadora = null, pedazos = [], tipoAudio = "", arranqueGrabacion = 0;
+
+  function ocupar(si) {
+    ocupado = si;
+    micBtn.disabled = si;
+    enviarBtn.disabled = si;
+  }
+
+  function base64(buffer) {
+    var bytes = new Uint8Array(buffer), texto = "";
+    for (var i = 0; i < bytes.length; i += 0x8000) {
+      texto += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(texto);
+  }
+
+  function tipoGrabable() {
+    if (!window.MediaRecorder) return null;
+    var candidatos = ["audio/webm", "audio/mp4", "audio/ogg"];
+    for (var i = 0; i < candidatos.length; i++) {
+      if (MediaRecorder.isTypeSupported(candidatos[i])) return candidatos[i];
+    }
+    return "";  // el navegador elige, y después leemos qué eligió
+  }
+
+  async function empezarAGrabar() {
+    if (ocupado || grabadora) return;
+    destrabarVoz();
+    var tipo = tipoGrabable();
+    if (tipo === null) {
+      estado("Este navegador no puede grabar. Escribime abajo.", true);
+      return;
+    }
+    try {
+      var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      grabadora = new MediaRecorder(stream, tipo ? { mimeType: tipo } : undefined);
+      pedazos = [];
+      // Gemini quiere el tipo pelado: "audio/webm", no "audio/webm;codecs=opus".
+      tipoAudio = (grabadora.mimeType || tipo || "audio/webm").split(";")[0];
+      grabadora.ondataavailable = function (e) { if (e.data.size) pedazos.push(e.data); };
+      grabadora.onstop = async function () {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        var blob = new Blob(pedazos, { type: tipoAudio });
+        grabadora = null;
+        if (Date.now() - arranqueGrabacion < 400 || blob.size < 1200) {
+          estado("Muy cortito. Mantenelo apretado mientras hablás.");
+          return;
+        }
+        var datos = base64(await blob.arrayBuffer());
+        preguntar({ audio: { mimeType: tipoAudio, data: datos } });
+      };
+      arranqueGrabacion = Date.now();
+      grabadora.start();
+      micBtn.classList.add("grabando");
+      estado("Te escucho…");
+    } catch (err) {
+      grabadora = null;
+      estado(err && err.name === "NotAllowedError"
+        ? "Hace falta permiso de micrófono. También podés escribirme."
+        : "No se pudo abrir el micrófono. Escribime abajo.", true);
+    }
+  }
+
+  function terminarDeGrabar() {
+    micBtn.classList.remove("grabando");
+    if (grabadora && grabadora.state === "recording") grabadora.stop();
+  }
+
+  micBtn.addEventListener("pointerdown", function (e) { e.preventDefault(); empezarAGrabar(); });
+  micBtn.addEventListener("pointerup", function (e) { e.preventDefault(); terminarDeGrabar(); });
+  micBtn.addEventListener("pointercancel", terminarDeGrabar);
+  micBtn.addEventListener("pointerleave", terminarDeGrabar);
+
+  function mandarTexto() {
+    var texto = textoEl.value.trim();
+    if (!texto || ocupado) return;
+    destrabarVoz();
+    textoEl.value = "";
+    textoEl.blur();
+    preguntar({ text: texto });
+  }
+  enviarBtn.addEventListener("click", mandarTexto);
+  textoEl.addEventListener("keydown", function (e) { if (e.key === "Enter") mandarTexto(); });
+
+  function preguntar(cuerpo) {
+    ocupar(true);
+    estado("Pensando…");
+    if (cuerpo.text) vosEl.textContent = cuerpo.text;
+    else vosEl.textContent = "…";
+    ponerEmocion("neutral");
+
+    cuerpo.history = historial;
+    fetch("api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cuerpo),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        ocupar(false);
+        if (!res.ok) {
+          estado(res.d.error || "Algo falló del lado del servidor.", true);
+          ponerEmocion("triste");
+          vosEl.textContent = "";
+          return;
+        }
+        vosEl.textContent = res.d.dijiste || "";
+        ellaEl.textContent = res.d.respuesta;
+        historial.push({ role: "user", content: res.d.dijiste || "(audio)" });
+        historial.push({ role: "assistant", content: res.d.respuesta });
+        if (historial.length > 12) historial = historial.slice(-12);
+        ponerEmocion(res.d.emocion);
+        estado("");
+        decir(res.d.respuesta, res.d.emocion);
+      })
+      .catch(function (err) {
+        ocupar(false);
+        estado("No se pudo llegar al servidor: " + err.message, true);
+      });
+  }
+
+  // ---------------- dibujo ----------------
+  function blit() {
+    var d = o.getImageData(0, 0, W, H).data;
+    v.fillStyle = "#000";
+    v.fillRect(0, 0, view.width, view.height);
+    v.fillStyle = "#3fe9ff";
+    for (var y = 0; y < H; y++) {
+      for (var x = 0; x < W; x++) {
+        if (d[(y * W + x) << 2] > 110) v.fillRect(x * SCALE, y * SCALE, SCALE - 0.5, SCALE - 0.5);
+      }
+    }
+  }
+
+  function nivel(dt) {
+    if (!hablando) return 0;
+    tHabla += dt / 1000;
+    golpe = Math.max(0, golpe - dt / 220);
+    var ritmo = Math.max(0, Math.sin(tHabla * 13) * 0.5 + 0.5);
+    return Math.min(1, 0.2 + 0.5 * ritmo + 0.35 * golpe);
+  }
+
+  var last = performance.now();
+  function frame(now) {
+    var dt = Math.min(64, now - last);
+    last = now;
+    var nv = nivel(dt);
+    face.update(dt, nv);
+    face.draw(o);
+    blit();
+    if (hablando) avisarALaPantalla(null, nv);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // algunas voces tardan en aparecer
+  if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = function () {};
+})();
+</script>
+</body>
+</html>
