@@ -52,6 +52,32 @@ Si ninguno anda, te dice cuáles sí tenés disponibles.
 | `GEMINI_API_KEY` | Opcional. Solo si querés el tier gratis, o el oído de respaldo |
 | `CARA_PROVIDER` | `claude` (por defecto) o `gemini` |
 | `CARA_MODEL` | Opcional. Para usar otro modelo. Con Gemini, si no la ponés, elige solo |
+| `CARA_PENSAR` | Opcional. En `si` hace que razone antes de contestar. Cuesta más |
+
+## Su memoria
+
+Emma decide sola qué vale la pena recordar. Cuando aparece algo que le sirve
+saber más adelante —cómo se llama alguien, en qué andás, algo que te molesta—
+lo anota, y en las charlas siguientes lo usa con naturalidad.
+
+Las notas viven **en tu teléfono**, no en ningún servidor: se guardan en el
+navegador y viajan con cada consulta. Podés verlas y borrarlas todas desde
+**Ajustes y memoria**, abajo de la cara.
+
+Guarda las últimas 60. No anota lo que caduca (el clima, la hora) ni lo que ya
+tenía anotado.
+
+> Como viven en el navegador, son de ese teléfono: si abrís Emma en otro, empieza
+> sin memoria. Cuando quieras que la comparta entre dispositivos, hay que mudarlas
+> a una base de datos.
+
+## Razonar antes de contestar
+
+Poniendo `CARA_PENSAR` en `si`, Emma piensa antes de responder. Se nota en
+preguntas difíciles, pero **el razonamiento se cobra como tokens de salida**, que
+son los caros: puede multiplicar por tres o cuatro lo que sale cada respuesta.
+
+Viene apagado a propósito. Prendelo cuando lo necesites, no de entrada.
 
 ## Cuánto sale cada respuesta
 

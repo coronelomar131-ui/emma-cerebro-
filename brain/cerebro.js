@@ -74,9 +74,38 @@ ${PROYECTOS}`;
 // único que convive con las herramientas de búsqueda.
 const FORMATO = `
 
-Contestá SIEMPRE con estas dos líneas y nada más:
+Contestá SIEMPRE con este formato y nada más:
 EMOCION: una de ${EMOCIONES.join(", ")}
-RESPUESTA: lo que le decís, en una o dos frases`;
+RESPUESTA: lo que le decís, en una o dos frases
+ANOTAR: (opcional) algo que quieras recordar para siempre
+
+La línea ANOTAR es tu memoria. Poné una sola cuando aparezca algo que te sirva
+saber más adelante: cómo se llama alguien de su entorno, qué le gusta o le
+molesta, en qué anda trabajando, una decisión que tomó, algo que te pidió que
+no olvides. Escribila corta y en tercera persona, como una ficha: "Trabaja con
+autopartes", "Prefiere que le hablen sin vueltas".
+
+No anotes lo que ya está anotado, ni lo que se te pide de paso, ni el clima ni
+nada que caduque en un rato. Si no hay nada que valga la pena, dejá la línea afuera.`;
+
+/** Lo que Emma fue anotando, para que lo tenga presente. */
+function conMemoria(base, notas) {
+  if (!Array.isArray(notas) || !notas.length) return base;
+  const lista = notas
+    .filter((n) => typeof n === "string" && n.trim())
+    .slice(-60)
+    .map((n) => "- " + n.trim().slice(0, 300))
+    .join("\n");
+  if (!lista) return base;
+  return `${base}
+
+## Lo que fuiste anotando vos misma
+
+${lista}
+
+Eso lo escribiste vos en charlas anteriores. Usalo con naturalidad, sin aclarar
+que lo tenías anotado, y sin repetirle a Omar cosas que ya sabe.`;
+}
 
 /** La fecha se calcula en cada consulta: si la dejáramos fija, envejecería. */
 function conFecha(base) {
@@ -127,11 +156,14 @@ export function interpretar(texto) {
 
   // 2) el formato con etiquetas, que es el que mejor respetan
   const emocion = limpio.match(/EMOCION\s*:\s*(\w+)/i);
-  const respuesta = limpio.match(/RESPUESTA\s*:\s*([\s\S]+)/i);
+  const anotar = limpio.match(/ANOTAR\s*:\s*(.+)/i);
+  // La respuesta llega hasta donde empieza ANOTAR, si es que vino.
+  const respuesta = limpio.match(/RESPUESTA\s*:\s*([\s\S]+?)(?=\n\s*ANOTAR\s*:|$)/i);
   if (respuesta) {
     return {
       emocion: emocion ? emocion[1].toLowerCase() : "neutral",
       respuesta: respuesta[1].trim(),
+      anotar: anotar ? anotar[1].trim() : "",
     };
   }
 
@@ -144,9 +176,12 @@ function normalizar(data, uso, textoOriginal) {
   if (!data || typeof data.respuesta !== "string" || !data.respuesta.trim()) {
     throw new Error("El modelo no devolvió una respuesta usable");
   }
+  const nota = typeof data.anotar === "string" ? data.anotar.trim() : "";
   return {
     emocion: EMOCIONES.includes(data.emocion) ? data.emocion : "neutral",
     respuesta: data.respuesta.trim(),
+    // Una nota vacía, muy corta o larguísima no sirve de memoria.
+    anotar: nota.length > 3 && nota.length < 300 ? nota : "",
     dijiste: (typeof data.dijiste === "string" && data.dijiste.trim()) || textoOriginal || "",
     uso,
   };
@@ -165,13 +200,27 @@ const PERFILES_VIEJOS = {
 
 function perfilDe(modelo) {
   return PERFILES_VIEJOS[modelo]
-    // Los modelos previos a la generación 4.6 no aceptan "effort" y usan la
-    // versión básica del buscador.
-    ? { aceptaEsfuerzo: false, buscador: "web_search_20250305" }
-    : { aceptaEsfuerzo: true, buscador: "web_search_20260209" };
+    // Los modelos previos a la generación 4.6 no aceptan "effort", usan la
+    // versión básica del buscador, y para razonar necesitan un presupuesto fijo.
+    ? {
+        aceptaEsfuerzo: false,
+        buscador: "web_search_20250305",
+        pensar: { type: "enabled", budget_tokens: 1500 },
+        techoPensando: 3500,
+      }
+    : {
+        aceptaEsfuerzo: true,
+        buscador: "web_search_20260209",
+        pensar: { type: "adaptive" },
+        techoPensando: 4000,
+      };
 }
 
-async function conClaude({ turnos, texto, modelo }) {
+// Razonar antes de contestar cuesta tokens de salida, que son los caros. Por eso
+// viene apagado: se prende poniendo CARA_PENSAR en "si".
+const PENSAR = /^(si|sí|1|true|yes)$/i.test(process.env.CARA_PENSAR || "");
+
+async function conClaude({ turnos, texto, modelo, notas }) {
   if (!anthropic) {
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     anthropic = new Anthropic();
@@ -184,12 +233,18 @@ async function conClaude({ turnos, texto, modelo }) {
     model: elegido,
     // Las respuestas se dicen en voz alta, pero con buscador necesita aire.
     max_tokens: 2048,
-    system: conFecha(SYSTEM) + FORMATO,
+    system: conFecha(conMemoria(SYSTEM, notas)) + FORMATO,
     tools: [{ type: perfil.buscador, name: "web_search" }],
   };
   // Charla corta: con esfuerzo bajo contesta más rápido y gasta menos. Los
   // modelos viejos no lo aceptan y devuelven 400 si se lo mandamos igual.
   if (perfil.aceptaEsfuerzo) pedido.output_config = { effort: "low" };
+
+  if (PENSAR) {
+    pedido.thinking = perfil.pensar;
+    // El presupuesto para pensar tiene que caber dentro del techo de salida.
+    pedido.max_tokens = perfil.techoPensando;
+  }
 
   let messages = [...turnos, { role: "user", content: texto }];
   let response = null;
@@ -249,7 +304,7 @@ async function modelosDisponibles(ai) {
   }
 }
 
-async function conGemini({ turnos, texto, audio, modelo }) {
+async function conGemini({ turnos, texto, audio, modelo, notas }) {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("Falta la clave. Poné GEMINI_API_KEY (se saca en aistudio.google.com/apikey)");
   }
@@ -273,7 +328,7 @@ async function conGemini({ turnos, texto, audio, modelo }) {
   // búsqueda vale más. Así que se lo pedimos con etiquetas en el prompt, que es
   // el formato que mejor respetan, y lo leemos con un parser tolerante.
   const config = {
-    systemInstruction: conFecha(SYSTEM) + FORMATO,
+    systemInstruction: conFecha(conMemoria(SYSTEM, notas)) + FORMATO,
     tools: [{ googleSearch: {} }, { urlContext: {} }],
     maxOutputTokens: 2048,
   };
@@ -307,7 +362,7 @@ async function conGemini({ turnos, texto, audio, modelo }) {
 }
 
 // ---------------- Ollama ----------------
-async function conOllama({ turnos, texto, modelo, ollamaUrl }) {
+async function conOllama({ turnos, texto, modelo, ollamaUrl, notas }) {
   let res;
   try {
     res = await fetch(`${ollamaUrl}/api/chat`, {
@@ -317,7 +372,7 @@ async function conOllama({ turnos, texto, modelo, ollamaUrl }) {
         model: modelo,
         stream: false,
         format: ESQUEMA,
-        messages: [{ role: "system", content: conFecha(SYSTEM) }, ...turnos, { role: "user", content: texto }],
+        messages: [{ role: "system", content: conFecha(conMemoria(SYSTEM, notas)) + FORMATO }, ...turnos, { role: "user", content: texto }],
       }),
     });
   } catch (err) {
@@ -357,6 +412,7 @@ export async function pensar(pedido) {
     throw new Error("Falta lo que querés decirle.");
   }
   return cerebro({
+    notas: pedido.notas,
     turnos: limpiarHistorial(pedido.history),
     texto: pedido.texto ? pedido.texto.trim() : "",
     audio: pedido.audio,

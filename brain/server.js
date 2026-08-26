@@ -111,6 +111,7 @@ const server = http.createServer(async (req, res) => {
         texto: cuerpo.text,
         audio: cuerpo.audio,
         history: cuerpo.history,
+        notas: cuerpo.notas,
         proveedor: PROVEEDOR,
         modelo: MODELO,
         ollamaUrl: OLLAMA_URL,
