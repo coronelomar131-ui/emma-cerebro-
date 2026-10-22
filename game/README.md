@@ -29,3 +29,6 @@ Motor: **Godot 4.3** (gratis). Un solo proyecto exporta a Steam (Windows/Linux/M
 3. Guardado de partida.
 4. Exportar: Proyecto -> Exportar -> Android (necesita JDK + Android SDK) y Windows.
 5. Steam: cuenta Steamworks ($100 USD) + plugin GodotSteam.
+
+## Demo web (celular)
+`demo-web/index.html` es una version jugable en el navegador, con controles tactiles. Misma idea que el proyecto Godot; sirve para probar mecanicas rapido.
