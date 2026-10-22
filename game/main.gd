@@ -10,12 +10,19 @@ var hud: CanvasLayer
 var tint: CanvasModulate
 var hour := 8.0
 var total_hours := 0.0
-var crates: Array[ColorRect] = []
+var crates: Array[TextureRect] = []
 var spawn_t := 0.0
+var world_seed := 0
 
 
 func _ready() -> void:
 	randomize()
+	world_seed = randi()
+	if FileAccess.file_exists(SAVE_PATH):
+		var saved = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
+		if typeof(saved) == TYPE_DICTIONARY and saved.has("seed"):
+			world_seed = int(saved["seed"])
+	seed(world_seed)
 	var center := Vector2(WORLD / 2.0, WORLD / 2.0)
 
 	tint = CanvasModulate.new()
@@ -28,6 +35,7 @@ func _ready() -> void:
 	for i in 45:
 		_spawn_zombie(_random_pos(center, 500.0))
 
+	randomize() # lo que sigue (botin, zombis nuevos) no depende de la semilla
 	player = CharacterBody2D.new()
 	player.set_script(PlayerScript)
 	player.position = center
@@ -91,11 +99,7 @@ func days_survived() -> int:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(0, 0, WORLD, WORLD), Color(0.2, 0.32, 0.18))
-	var grid := Color(0, 0, 0, 0.06)
-	for i in range(0, WORLD + 1, 100):
-		draw_line(Vector2(i, 0), Vector2(i, WORLD), grid)
-		draw_line(Vector2(0, i), Vector2(WORLD, i), grid)
+	draw_texture_rect(preload("res://art/grass.png"), Rect2(0, 0, WORLD, WORLD), true)
 
 
 # ---- Mundo ----
@@ -116,12 +120,17 @@ func _make_house(pos: Vector2) -> void:
 		_make_crate(pos + Vector2(randf_range(40, w - 60), randf_range(30, h - 50)), 2)
 
 
-func _floor(r: Rect2) -> ColorRect:
-	var f := ColorRect.new()
-	f.position = r.position
-	f.size = r.size
-	f.color = Color(0.45, 0.35, 0.25)
-	return f
+func _tiled(tex: Texture2D, pos: Vector2, sz: Vector2) -> TextureRect:
+	var t := TextureRect.new()
+	t.texture = tex
+	t.stretch_mode = TextureRect.STRETCH_TILE
+	t.position = pos
+	t.size = sz
+	return t
+
+
+func _floor(r: Rect2) -> TextureRect:
+	return _tiled(preload("res://art/floor.png"), r.position, r.size)
 
 
 func _wall(r: Rect2) -> void:
@@ -133,19 +142,15 @@ func _wall(r: Rect2) -> void:
 	rect.size = r.size
 	shape.shape = rect
 	body.add_child(shape)
-	var vis := ColorRect.new()
-	vis.size = r.size
-	vis.position = -r.size / 2.0
-	vis.color = Color(0.25, 0.2, 0.18)
-	body.add_child(vis)
+	body.add_child(_tiled(preload("res://art/wall.png"), -r.size / 2.0, r.size))
 	add_child(body)
 
 
 func _make_crate(pos: Vector2, richness: int) -> void:
-	var c := ColorRect.new()
-	c.size = Vector2(22, 22)
+	var c := TextureRect.new()
+	c.texture = preload("res://art/crate.png")
+	c.size = Vector2(32, 32)
 	c.position = pos
-	c.color = Color(0.7, 0.5, 0.2)
 	c.set_meta("richness", richness)
 	c.set_meta("looted", false)
 	add_child(c)
@@ -167,10 +172,10 @@ func interact() -> String:
 			continue
 		if (c.position + c.size / 2.0).distance_to(player.position) < 40.0:
 			c.set_meta("looted", true)
-			c.color = Color(0.3, 0.25, 0.2)
+			c.texture = preload("res://art/crate_open.png")
 			var rich: int = c.get_meta("richness")
 			var found: Array[String] = []
-			for item in ["comida", "agua", "venda", "bate"]:
+			for item in ["comida", "agua", "venda", "bate", "trapo"]:
 				if randf() < (0.08 if item == "bate" else 0.25) * rich:
 					player.add_item(item)
 					found.append(item)
@@ -186,6 +191,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			KEY_1: player.use_item("comida")
 			KEY_2: player.use_item("agua")
 			KEY_3: player.use_item("venda")
+			KEY_C: hud.toast(player.craft_bandage())
 	elif e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 		player.attack()
 
@@ -203,7 +209,7 @@ func save_game() -> void:
 		"thirst": player.thirst, "energy": player.energy,
 		"items": player.items, "bleeding": player.bleeding,
 		"weapon_dur": player.weapon_dur,
-		"hour": hour, "total_hours": total_hours,
+		"seed": world_seed, "hour": hour, "total_hours": total_hours,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:

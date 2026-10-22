@@ -55,6 +55,7 @@ func setup(m: Node, p: CharacterBody2D) -> void:
 	run.toggled.connect(func(on: bool): player.want_run = on)
 	_button("Comer", 150, 100, Vector2(100, 50)).button_down.connect(player.use_item.bind("comida"))
 	_button("Beber", 150, 160, Vector2(100, 50)).button_down.connect(player.use_item.bind("agua"))
+	_button("Hacer venda", 270, 30, Vector2(120, 60)).button_down.connect(func(): toast(player.craft_bandage()))
 	_button("Vendar", 150, 220, Vector2(100, 50)).button_down.connect(player.use_item.bind("venda"))
 
 
@@ -79,8 +80,8 @@ func _process(delta: float) -> void:
 	bars["Hambre"].value = player.hunger
 	bars["Sed"].value = player.thirst
 	bars["Energia"].value = player.energy
-	inv_label.text = "Comida %d  Agua %d  Vendas %d  Bate %s%s" % [
-		player.items.get("comida", 0), player.items.get("agua", 0), player.items.get("venda", 0),
+	inv_label.text = "Comida %d  Agua %d  Vendas %d  Trapos %d  Bate %s%s" % [
+		player.items.get("comida", 0), player.items.get("agua", 0), player.items.get("venda", 0), player.items.get("trapo", 0),
 		str(player.weapon_dur) if player.weapon_dur > 0 else "-",
 		"   SANGRANDO: usa una venda" if player.bleeding else ""]
 	clock_label.text = "Dia %d  %02d:%02d%s" % [

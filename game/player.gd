@@ -2,6 +2,7 @@ extends CharacterBody2D
 
 signal died
 
+const SPRITE := preload("res://art/player.png")
 const WALK := 140.0
 const RUN := 240.0
 
@@ -116,6 +117,15 @@ func use_item(item: String) -> void:
 				health = minf(100.0, health + 25.0)
 
 
+# 2 trapos -> 1 venda
+func craft_bandage() -> String:
+	if items.get("trapo", 0) < 2:
+		return "Necesitas 2 trapos"
+	items["trapo"] -= 2
+	add_item("venda")
+	return "Hiciste una venda"
+
+
 func add_item(item: String, n: int = 1) -> void:
 	if item == "bate":
 		weapon_dur = 30
@@ -134,5 +144,5 @@ func hurt(amount: float) -> void:
 
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, 10.0, Color(0.25, 0.55, 0.95))
-	draw_line(Vector2.ZERO, facing * 18.0, Color.WHITE, 3.0)
+	draw_set_transform(Vector2.ZERO, facing.angle())
+	draw_texture(SPRITE, -SPRITE.get_size() / 2.0)

@@ -1,5 +1,7 @@
 extends CharacterBody2D
 
+const SPRITE := preload("res://art/zombie.png")
+
 var hp := 3
 var speed := 70.0
 var target: Node2D
@@ -65,6 +67,4 @@ func hit(dmg: int, from_dir: Vector2) -> void:
 
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, 10.0, Color(0.45, 0.6, 0.35))
-	draw_circle(Vector2(8, -5), 3.0, Color(0.45, 0.6, 0.35))
-	draw_circle(Vector2(8, 5), 3.0, Color(0.45, 0.6, 0.35))
+	draw_texture(SPRITE, -SPRITE.get_size() / 2.0)
