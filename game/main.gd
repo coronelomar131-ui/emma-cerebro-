@@ -39,6 +39,7 @@ func _ready() -> void:
 	add_child(hud)
 	hud.setup(self, player)
 
+	load_game()
 	var cam: Camera2D = player.get_child(-1)
 	cam.limit_left = 0
 	cam.limit_top = 0
@@ -62,6 +63,11 @@ func _process(delta: float) -> void:
 	var daylight := clampf(cos((hour - 13.0) / 24.0 * TAU) + 0.3, 0.0, 1.0)
 	tint.color = Color(0.12, 0.14, 0.3).lerp(Color.WHITE, daylight)
 
+	save_t -= delta
+	if save_t <= 0.0:
+		save_t = 30.0
+		save_game()
+
 	# de noche aparecen mas zombis fuera de la pantalla
 	if is_night() and not player.dead:
 		spawn_t -= delta
@@ -69,6 +75,11 @@ func _process(delta: float) -> void:
 			spawn_t = 6.0
 			var p: Vector2 = player.position + Vector2.from_angle(randf() * TAU) * 700.0
 			_spawn_zombie(p.clamp(Vector2(50, 50), Vector2(WORLD - 50, WORLD - 50)))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
+		save_game()
 
 
 func is_night() -> bool:
@@ -159,8 +170,8 @@ func interact() -> String:
 			c.color = Color(0.3, 0.25, 0.2)
 			var rich: int = c.get_meta("richness")
 			var found: Array[String] = []
-			for item in ["comida", "agua", "venda"]:
-				if randf() < 0.25 * rich:
+			for item in ["comida", "agua", "venda", "bate"]:
+				if randf() < (0.08 if item == "bate" else 0.25) * rich:
 					player.add_item(item)
 					found.append(item)
 			return "Encontraste: " + ", ".join(found) if found.size() > 0 else "Estaba vacio"
@@ -179,5 +190,47 @@ func _unhandled_input(e: InputEvent) -> void:
 		player.attack()
 
 
+const SAVE_PATH := "user://save.json"
+var save_t := 30.0
+
+
+func save_game() -> void:
+	if player.dead:
+		return
+	var data := {
+		"pos": [player.position.x, player.position.y],
+		"health": player.health, "hunger": player.hunger,
+		"thirst": player.thirst, "energy": player.energy,
+		"items": player.items, "bleeding": player.bleeding,
+		"weapon_dur": player.weapon_dur,
+		"hour": hour, "total_hours": total_hours,
+	}
+	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(data))
+
+
+# Guarda al jugador y la hora. El mapa y los zombis se regeneran cada partida.
+func load_game() -> void:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return
+	var data = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
+	if typeof(data) != TYPE_DICTIONARY:
+		return
+	player.position = Vector2(data["pos"][0], data["pos"][1])
+	player.health = data["health"]
+	player.hunger = data["hunger"]
+	player.thirst = data["thirst"]
+	player.energy = data["energy"]
+	player.bleeding = data["bleeding"]
+	player.weapon_dur = int(data["weapon_dur"])
+	for k in data["items"]:
+		player.items[k] = int(data["items"][k])
+	hour = data["hour"]
+	total_hours = data["total_hours"]
+
+
 func _on_player_died() -> void:
+	if FileAccess.file_exists(SAVE_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
 	hud.show_death(days_survived())

@@ -17,6 +17,8 @@ var facing := Vector2.RIGHT
 var noise := 60.0              # radio al que los zombis te oyen
 var attack_cd := 0.0
 var dead := false
+var bleeding := false
+var weapon_dur := 0 # bate: golpes que le quedan
 
 
 func _ready() -> void:
@@ -68,9 +70,11 @@ func _physics_process(delta: float) -> void:
 
 	hunger = maxf(0.0, hunger - 0.15 * delta)
 	thirst = maxf(0.0, thirst - 0.25 * delta)
+	if bleeding:
+		hurt(0.8 * delta)
 	if hunger <= 0.0 or thirst <= 0.0:
 		hurt(1.0 * delta)
-	elif hunger > 50.0 and thirst > 50.0:
+	elif hunger > 50.0 and thirst > 50.0 and not bleeding:
 		health = minf(100.0, health + 0.3 * delta)
 
 
@@ -84,10 +88,16 @@ func attack() -> void:
 	attack_cd = 0.5
 	energy -= 5.0
 	noise = maxf(noise, 350.0)
+	var armed := weapon_dur > 0
+	var reach := 60.0 if armed else 48.0
+	var hit_any := false
 	for z in get_tree().get_nodes_in_group("zombies"):
 		var to_z: Vector2 = z.global_position - global_position
-		if to_z.length() < 48.0 and to_z.normalized().dot(facing) > 0.3:
-			z.hit(1, facing)
+		if to_z.length() < reach and to_z.normalized().dot(facing) > 0.3:
+			z.hit(2 if armed else 1, facing)
+			hit_any = true
+	if armed and hit_any:
+		weapon_dur -= 1
 	queue_redraw()
 
 
@@ -98,10 +108,18 @@ func use_item(item: String) -> void:
 	match item:
 		"comida": hunger = minf(100.0, hunger + 35.0)
 		"agua": thirst = minf(100.0, thirst + 40.0)
-		"venda": health = minf(100.0, health + 25.0)
+		"venda":
+			if bleeding:
+				bleeding = false
+				health = minf(100.0, health + 10.0)
+			else:
+				health = minf(100.0, health + 25.0)
 
 
 func add_item(item: String, n: int = 1) -> void:
+	if item == "bate":
+		weapon_dur = 30
+		return
 	items[item] = items.get(item, 0) + n
 
 

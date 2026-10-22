@@ -20,6 +20,7 @@ Motor: **Godot 4.3** (gratis). Un solo proyecto exporta a Steam (Windows/Linux/M
 - Zombis que te oyen segun tu ruido (correr y atacar hacen mas ruido; quieto casi nada).
 - Casas con cajas de botin, ciclo dia/noche (1 hora de juego = 60 s) y mas zombis de noche.
 - Pantalla de muerte con dias sobrevividos.
+- Bate (se encuentra en cajas, 30 golpes), sangrado tras mordidas (se cura con venda) y guardado automatico cada 30 s (jugador y hora; el mapa se regenera).
 
 ## Siguientes pasos sugeridos
 1. Arte real (tileset + sprites) y sonido.

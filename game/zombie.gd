@@ -33,6 +33,8 @@ func _physics_process(delta: float) -> void:
 			if dist < 26.0 and attack_cd <= 0.0:
 				attack_cd = 1.0
 				target.hurt(10.0)
+				if randf() < 0.35:
+					target.bleeding = true
 		else:
 			dir = _wander(delta)
 	else:

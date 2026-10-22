@@ -79,8 +79,10 @@ func _process(delta: float) -> void:
 	bars["Hambre"].value = player.hunger
 	bars["Sed"].value = player.thirst
 	bars["Energia"].value = player.energy
-	inv_label.text = "Comida %d  Agua %d  Vendas %d" % [
-		player.items.get("comida", 0), player.items.get("agua", 0), player.items.get("venda", 0)]
+	inv_label.text = "Comida %d  Agua %d  Vendas %d  Bate %s%s" % [
+		player.items.get("comida", 0), player.items.get("agua", 0), player.items.get("venda", 0),
+		str(player.weapon_dur) if player.weapon_dur > 0 else "-",
+		"   SANGRANDO: usa una venda" if player.bleeding else ""]
 	clock_label.text = "Dia %d  %02d:%02d%s" % [
 		main.days_survived() + 1, int(main.hour), int(fmod(main.hour, 1.0) * 60.0),
 		"  (noche)" if main.is_night() else ""]
